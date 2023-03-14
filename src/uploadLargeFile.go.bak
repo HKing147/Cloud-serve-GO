@@ -1,0 +1,46 @@
+package main
+
+import (
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"io"
+	"os"
+)
+
+func uploadLargeFile(c *gin.Context) {
+	fmt.Print(c)
+	//file, _ := c.GetPostForm("file")
+	file, _ := c.FormFile("file")
+	idx := c.DefaultPostForm("idx", "defaultIdx")
+	//fmt.Println("====>", file)
+
+	//OSS.UploadFile(file)
+	_, err := os.Stat("./" + file.Filename)
+	if err != nil {
+		os.MkdirAll("./"+file.Filename, os.ModePerm)
+	}
+	savePath := "./" + file.Filename + "/" + idx
+	filePtr, err := file.Open()
+	if err != nil {
+		fmt.Println("file error")
+		return
+	}
+	defer filePtr.Close()
+
+	saveFile, err := os.Create(savePath)
+	if err != nil {
+		fmt.Println("saveFile error")
+		return
+	}
+	defer saveFile.Close()
+	var context []byte = make([]byte, 1024)
+	for {
+		n, err := filePtr.Read(context)
+		saveFile.Write(context[:n])
+		if err != nil {
+			if err == io.EOF {
+				return
+			}
+		}
+	}
+}
