@@ -3,10 +3,12 @@ package main
 import (
 	"Cloud-serve/src/DB"
 	"Cloud-serve/src/OSS"
+	"Cloud-serve/src/models"
 	"fmt"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/gin-gonic/gin"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"time"
 )
@@ -31,20 +33,28 @@ func UploadPart(c *gin.Context) {
 		fmt.Println("UploadPart err:", err)
 		os.Exit(-1)
 	}
-	rd := DB.ConnRedis()
+	//rd := DB.ConnRedis()
 	imur := InitiateMultipartUploadResult{}
-	rd.Get(para.UploadID).Scan(&imur)
+	//rd.Get(para.UploadID).Scan(&imur)
+	DB.Get(para.UploadID).Scan(&imur)
 	bucket := OSS.BucketConn()
 	part, err := bucket.UploadPart(oss.InitiateMultipartUploadResult(imur), filePtr, para.File.Size, para.Idx)
 	if err != nil {
 		fmt.Println("UploadPart err:", err)
 		os.Exit(-1)
 	}
-	exist, _ := rd.Exists(para.UploadID + "_parts").Result() // 查询key是否之前存在，不存在就为这个key设置过期时间
+	//exist, _ := rd.Exists(para.UploadID + "_parts").Result() // 查询key是否之前存在，不存在就为这个key设置过期时间
+	exist, _ := DB.Exists(para.UploadID + "_parts").Result() // 查询key是否之前存在，不存在就为这个key设置过期时间
 
 	part1 := uploadPart(part)
-	rd.SAdd(para.UploadID+"_parts", &part1)
+	//rd.SAdd(para.UploadID+"_parts", &part1)
+	DB.SAdd(para.UploadID+"_parts", &part1)
 	if exist == 0 { // 第一次加入，设置过期时间
-		rd.Expire(para.UploadID+"_parts", 100*time.Second) // 保留100s
+		//rd.Expire(para.UploadID+"_parts", 100*time.Second) // 保留100s
+		DB.Expire(para.UploadID+"_parts", 100*time.Second) // 保留100s
 	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"meta": models.Meta{0, "UploadPart success"},
+	})
 }

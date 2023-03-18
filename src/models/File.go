@@ -1,0 +1,38 @@
+package models
+
+import "gorm.io/gorm"
+
+// File
+type File struct {
+	gorm.Model
+	DownCount int64 `json:"downCount"` // 下载次数
+	//FileName  string `json:"fileName"`  // 文件名
+	//FilePath  string `json:"filePath"`  // 文件路径（相对于当前用户的）
+	FileURL string `json:"fileUrl"` // 文件URL
+	//ID         int64  `json:"id"`        // 文件ID
+	NotFolder bool `json:"notFolder"` // 是否是文件夹
+	//ModifyTime int64  `json:"modifyTime"` // 修改时间
+	//ParentID int64  `json:"parentID"` // 父文件夹ID
+	Size int64  `json:"size"` // 文件大小
+	Type string `json:"type"` // 文件类型
+	MD5  string `json:"md5"`  // 文件md5值
+	//UploadTime int64  `json:"uploadTime"` // 上传时间
+	//ParentID *int
+	//Parent   *File `json:"parent"` // 父文件夹
+}
+
+// func InsertFile(fileName string, filePath string, fileUrl string, isFolder bool, size int64, Type string) error {
+func InsertFile(fileUrl string, size int64, Type string, MD5 string) (*File, error) {
+	file := File{
+		//FileName: fileName,
+		//FilePath: filePath,
+		FileURL: fileUrl,
+		//IsFolder: isFolder,
+		Size: size,
+		Type: Type,
+		MD5:  MD5,
+		//ParentID: parentID,
+	}
+	res := db.Create(&file)
+	return &file, res.Error
+}
