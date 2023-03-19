@@ -18,7 +18,10 @@ func createFolder(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	//folderName, _ := c.GetPostForm("folderName")
 	//path, _ := c.GetPostForm("path")
-	err := models.InsertUserFile(userID.(uint), 1, form.FolderName, form.Path, true) // 文件夹的fileID为1
+	// 先创建文件夹
+	folder, _ := models.InsertFile("", 0, "folder", "")
+	// 再将文件夹与User关联
+	err := models.InsertUserFile(userID.(uint), folder.ID, form.FolderName, form.Path, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "创建文件夹失败！！！"}})
 		return

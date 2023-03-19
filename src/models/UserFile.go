@@ -85,11 +85,53 @@ func GetAlbum(userID uint) ([]SelectFilesByUserIDAndPathResp, error) {
 	return collectedList, res.Error
 }
 
-func DeleteFiles(userID uint, fileIDList []uint) error {
+func DeleteFile(userID uint, folderID uint, path string) error {
+	// 获取文件夹下的文件列表
+	//type T struct {
+	//	FileID uint `json:"fileID"`
+	//}
+	fileList := []UserFile{}
+	res := db.Model(&UserFile{}).Where("user_id = ? and file_path = ?", userID, path).Scan(&fileList)
+	if res.Error != nil {
+		return res.Error
+	}
+	var fileIDList []uint
+	fileIDList = make([]uint, len(fileList))
+	for i, item := range fileList {
+		fileIDList[i] = item.FileID
+	}
+	err := DeleteFiles(userID, fileIDList, path)
+	return err
+}
+
+func DeleteFiles(userID uint, fileIDList []uint, path string) error {
 	/**
-	TODO: file如果是文件夹还要做到级联删除
+	TODO: file如果是文件夹还要做到递归删除
 	*/
-	return db.Model(&UserFile{}).Delete("user_id = ? and file_id in ?", userID, fileIDList).Error
+	//return db.Model(&UserFile{}).Delete("user_id = ? and file_id in ? file_path = ?", userID, fileIDList, path).Error
+	// 递归删除
+	for _, fileID := range fileIDList {
+		// 先看它是否是文件夹
+		item := UserFile{}
+		err := db.Model(&UserFile{}).Where("file_id = ? and user_id = ? and file_path = ?", fileID, userID, path).Scan(&item)
+		if err.Error != nil {
+			return err.Error
+		}
+		//db.Model(&UserFile{}).Delete("file_id = ? and user_id = ? and file_path = ?", fileID, userID, path)
+		if item.IsFolder { // 是文件夹
+			// 递归进入删除
+			err := DeleteFile(userID, fileID, path+item.FileName+"/")
+			if err != nil {
+				return err
+			}
+		}
+		// 删除该文件, 不管是否是文件夹
+		err = db.Delete(&item)
+		if err.Error != nil {
+			return err.Error
+		}
+	}
+	return nil
 }
 
 // 获取用户删除的文件列表

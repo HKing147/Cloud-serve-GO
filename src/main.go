@@ -10,7 +10,6 @@ import (
 func main() {
 	models.Init()
 	DB.InitRedis()
-	models.InsertFile("", 0, "folder", "") // 文件夹 fileID为1
 	r := gin.Default()
 	r.Use(middleware.Cors(), middleware.AuthMiddleware())
 	r.GET("/ping", func(c *gin.Context) {

@@ -8,13 +8,14 @@ import (
 
 type deleteFilesForm struct {
 	FileIDList []uint `json:"fileIDList"`
+	Path       string `json:"path"`
 }
 
 func deleteFiles(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	form := deleteFilesForm{}
 	c.BindJSON(&form)
-	err := models.DeleteFiles(userID.(uint), form.FileIDList)
+	err := models.DeleteFiles(userID.(uint), form.FileIDList, form.Path)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "error"}})
 		return
