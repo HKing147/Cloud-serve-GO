@@ -28,5 +28,10 @@ func main() {
 	r.GET("/api/getFileList", models.GetFileList)
 	r.GET("/api/checkUploaded", checkUploaded)
 	r.POST("/api/createFolder", createFolder)
+	r.POST("/api/collectedFiles", collectedFiles)
+	r.GET("/api/getCollectedList", getCollectedList)
+	r.GET("/api/getAlbum", getAlbum)
+	r.POST("/api/deleteFiles", deleteFiles)
+	r.GET("/api/getRecycle", getRecycle)
 	r.Run() // 监听并在 0.0.0.0:8080 上启动服务
 }

@@ -1,0 +1,23 @@
+package main
+
+import (
+	"Cloud-serve/src/models"
+	"github.com/gin-gonic/gin"
+	"net/http"
+)
+
+type deleteFilesForm struct {
+	FileIDList []uint `json:"fileIDList"`
+}
+
+func deleteFiles(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	form := deleteFilesForm{}
+	c.BindJSON(&form)
+	err := models.DeleteFiles(userID.(uint), form.FileIDList)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "error"}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"meta": models.Meta{0, "success"}})
+}
