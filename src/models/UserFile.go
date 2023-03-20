@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -86,50 +87,67 @@ func GetAlbum(userID uint) ([]SelectFilesByUserIDAndPathResp, error) {
 	return collectedList, res.Error
 }
 
-func DeleteFile(userID uint, userFileID uint, path string) error {
-	// 获取文件夹下的文件列表
-	//type T struct {
-	//	FileID uint `json:"fileID"`
-	//}
-	fileList := []UserFile{}
-	res := db.Model(&UserFile{}).Where("user_id = ? and file_path = ?", userID, path).Scan(&fileList)
-	if res.Error != nil {
-		return res.Error
+// 只删除当前文件（Recycle表和UserFile表）
+func DeleteOneFile(userID uint, file UserFile) error {
+	// Recycle表中添加一条记录
+	err := InsertRecycle(userID, file.ID)
+	if err != nil {
+		return err
 	}
-	var userFileIDList []uint
-	userFileIDList = make([]uint, len(fileList))
-	for i, item := range fileList {
-		userFileIDList[i] = item.ID
-	}
-	err := DeleteFiles(userID, userFileIDList, path)
-	return err
+	// UserFile表中删除这条记录: DeletedAt置为NULL
+	return db.Delete(&file).Error
 }
 
+// 递归进入文件夹删除
+func DeleteFileDown(userID uint, folder UserFile) error {
+	// 获取文件夹下的文件列表
+	fileList := []UserFile{}
+	err := db.Model(&UserFile{}).Where("user_id = ? and file_path = ?", userID, folder.FilePath+folder.FileName+"/").Scan(&fileList).Error
+	if err != nil {
+		return err
+	}
+
+	for _, file := range fileList {
+		// 判断是否是文件夹
+		if file.IsFolder { // 是文件夹，递归进入删除
+			err := DeleteFileDown(userID, file)
+			if err != nil {
+				return err
+			}
+		}
+		// 删除文件（不用向Recycle表中插入）
+		err = db.Delete(&file).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// 只有第一层的文件才会向Recycle表中插入一条记录
 func DeleteFiles(userID uint, userFileIDList []uint, path string) error {
-	/**
-	TODO: file如果是文件夹还要做到递归删除
-	*/
 	//return db.Model(&UserFile{}).Delete("user_id = ? and file_id in ? file_path = ?", userID, fileIDList, path).Error
 	// 递归删除
 	for _, userFileID := range userFileIDList {
 		// 先看它是否是文件夹
-		item := UserFile{}
-		err := db.Model(&UserFile{}).Where("id = ? and user_id = ? and file_path = ?", userFileID, userID, path).Scan(&item)
-		if err.Error != nil {
-			return err.Error
+		file := UserFile{}
+		err := db.Model(&UserFile{}).Where("id = ? and user_id = ? and file_path = ?", userFileID, userID, path).Scan(&file).Error
+		if err != nil {
+			return err
 		}
 		//db.Model(&UserFile{}).Delete("file_id = ? and user_id = ? and file_path = ?", fileID, userID, path)
-		if item.IsFolder { // 是文件夹
+		if file.IsFolder { // 是文件夹
 			// 递归进入删除
-			err := DeleteFile(userID, userFileID, path+item.FileName+"/")
+			//err = DeleteFileDown(userID, []UserFile{file}, path+file.FileName+"/")
+			err = DeleteFileDown(userID, file)
 			if err != nil {
 				return err
 			}
 		}
 		// 删除该文件, 不管是否是文件夹
-		err = db.Delete(&item)
-		if err.Error != nil {
-			return err.Error
+		err = DeleteOneFile(userID, file) // 需要向Recycle表中插入一条记录
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -143,15 +161,130 @@ func DeleteFiles(userID uint, userFileIDList []uint, path string) error {
 //	return list, res.Error
 //}
 
-// 恢复被删除的文件
-func ResumeFiles(userID uint, userFileIDList []uint) error {
-	// 先将Recycle表中的记录删除
-	err := ResumeRecycle(userID, userFileIDList)
+// 只单单恢复当前文件
+func ResumeOneFile(userID uint, file UserFile) error {
+	fmt.Println("恢复文件", file.FileName, file.FilePath, file.IsFolder)
+	//err := ResumeRecycle(userID, []uint{file.ID})
+	err := ResumeRecycle(userID, file.ID)
 	if err != nil {
-		fmt.Println("提前退出")
 		return err
 	}
-	// 再将UserFile表中的deleted_at字段置为NULL
-	// 要加Unscoped()！！！
-	return db.Unscoped().Model(&UserFile{}).Where("user_id = ? and id in ?", userID, userFileIDList).Update("deleted_at", nil).Error
+	// 再将UserFile中DeletedAt字段置为NULL
+	return db.Unscoped().Model(&file).Update("deleted_at", nil).Error
+}
+
+// 向上恢复文件夹(一定要是文件夹！！！)
+func ResumeFolderUP(userID uint, son UserFile) error {
+	if son.FilePath == "/" { // 已经恢复到根文件夹了，直接退出
+		return nil
+	}
+	strList := strings.Split(son.FilePath, "/")
+	fmt.Printf("len: %v strList: %v\n", len(strList), strList)
+	// 获取父文件夹名
+	parentName := strList[len(strList)-2]
+	// 获取父文件夹所在文件夹路径
+	parentPath := son.FilePath[:len(son.FilePath)-len(parentName)-1]
+	// 查出父文件夹
+	parent := UserFile{}
+	err := db.Unscoped().Model(&UserFile{}).Where("file_name = ? and file_path = ? and is_folder = ?", parentName, parentPath, true).Scan(&parent).Error
+	if err != nil {
+		return err
+	}
+	// 先检查父文件夹此时是否存在（可能被删除了，但是在其它子文件恢复时将其恢复了；也有可能没被删除过）
+	// 防止重复恢复，提升性能
+	if !parent.DeletedAt.Valid { // DeletedAt为空，存在，直接return，不用继续往上恢复
+		return nil
+	}
+	// 父文件夹不存在，将其恢复
+	//err = ResumeOneFile(userID, parent)// 错误
+	err = db.Unscoped().Model(&parent).Update("deleted_at", nil).Error // 不用删除Recycle表的记录(不是第一层)
+	if err != nil {
+		return err
+	}
+	/*
+		// 先将Recycle表中记录删除
+		err = ResumeRecycle(userID, []uint{parent.ID})
+		if err != nil {
+			return err
+		}
+		// 再将UserFile中DeletedAt字段置为NULL
+		err = db.Unscoped().Model(&parent).Update("deleted_at", nil).Error
+		if err != nil {
+			return err
+		}
+	*/
+	// 最后再继续向上恢复
+	return ResumeFolderUP(userID, parent)
+}
+
+// 向下递归恢复文件（不用再向上了）
+func ResumeFilesDown(userID uint, parent UserFile) error {
+	// 先查询出它的子文件
+	path := parent.FilePath + parent.FileName + "/"
+	fileList := []UserFile{}
+	err := db.Unscoped().Model(&UserFile{}).Where("user_id = ? and file_path = ?", userID, path).Scan(&fileList).Error
+	if err != nil {
+		return err
+	}
+	for _, file := range fileList {
+		if file.IsFolder { // 是文件夹继续就递归
+			err = ResumeFilesDown(userID, file)
+			if err != nil {
+				return err
+			}
+		}
+		// 恢复当前文件/文件夹
+		//err = ResumeOneFile(userID, file)// 错误
+		err = db.Unscoped().Model(&file).Update("deleted_at", nil).Error // 不用删除Recycle表的记录(不是第一层)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// 恢复被删除的文件(只有第一层才会将UserFile表中的deleted_at置为NULL)
+func ResumeFiles(userID uint, userFileIDList []uint) error {
+	/**
+	简单恢复
+	*/
+	//// 先将Recycle表中的记录删除
+	//err := ResumeRecycle(userID, userFileIDList)
+	//if err != nil {
+	//	fmt.Println("提前退出")
+	//	return err
+	//}
+	//// 再将UserFile表中的deleted_at字段置为NULL
+	//// 要加Unscoped()！！！
+	//return db.Unscoped().Model(&UserFile{}).Where("user_id = ? and id in ?", userID, userFileIDList).Update("deleted_at", nil).Error
+
+	/**
+	TODO: file如果是文件夹还要做到：
+		1.向上恢复包含它的文件夹
+		2.向下递归恢复其子文件
+	*/
+	// 先判断是否是文件夹
+	for _, userFileID := range userFileIDList {
+		file := UserFile{}
+		db.Unscoped().Model(&UserFile{}).Where("user_id = ? and id = ?", userID, userFileID).Scan(&file)
+
+		// 1.向上恢复包含它的父文件夹(文件和文件夹都要)
+		err := ResumeFolderUP(userID, file)
+		if err != nil {
+			return err
+		}
+		if file.IsFolder { // 是文件夹
+			// 2.向下递归恢复其子文件（是由文件夹才要递归下去）
+			err = ResumeFilesDown(userID, file)
+			if err != nil {
+				return err
+			}
+		}
+		// 不管是文件夹还是文件，都要将Recycle表中记录删除，(只有第一层)将UserFile表中的deleted_at置为NULL
+		err = ResumeOneFile(userID, file)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

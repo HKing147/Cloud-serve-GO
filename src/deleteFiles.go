@@ -20,13 +20,13 @@ func deleteFiles(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "error"}})
 		return
 	}
-	// 删除的文件插入到Recycle表
-	for _, userFileID := range form.UserFileIDList {
-		err = models.InsertRecycle(userID.(uint), userFileID)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "error"}})
-			return
-		}
-	}
+	//// 删除的文件插入到Recycle表
+	//for _, userFileID := range form.UserFileIDList {
+	//	err = models.InsertRecycle(userID.(uint), userFileID)
+	//	if err != nil {
+	//		c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "error"}})
+	//		return
+	//	}
+	//}
 	c.JSON(http.StatusOK, gin.H{"meta": models.Meta{0, "success"}})
 }

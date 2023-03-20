@@ -1,6 +1,9 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"fmt"
+	"gorm.io/gorm"
+)
 
 // 回收站
 type Recycle struct {
@@ -23,7 +26,15 @@ func GetRecycle(userID uint) ([]SelectFilesByUserIDAndPathResp, error) {
 }
 
 // 取消删除文件
-func ResumeRecycle(userID uint, userFileIDList []uint) error {
+//func ResumeRecycle(userID uint, userFileIDList []uint) error {
+//	// 删除这些记录
+//	return db.Model(&Recycle{}).Where("user_id = ? and user_file_id in ?", userID, userFileIDList).Delete(&Recycle{}).Error
+//}
+
+// 取消删除文件
+func ResumeRecycle(userID uint, userFileID uint) error {
+	fmt.Printf("ResumeRecycle ==> userID: %v, userFileID: %v\n", userID, userFileID)
 	// 删除这些记录
-	return db.Model(&Recycle{}).Where("user_id = ? and user_file_id in ?", userID, userFileIDList).Delete(&Recycle{}).Error
+	return db.Model(&Recycle{}).Where("user_id = ? and user_file_id = ?", userID, userFileID).Delete(&Recycle{}).Error
+	// return db.Model(&Recycle{}).Delete("user_id = ? and user_file_id = ?", userID, userFileID).Error
 }
