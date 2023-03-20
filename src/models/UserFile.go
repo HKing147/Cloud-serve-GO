@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net/http"
@@ -135,9 +136,22 @@ func DeleteFiles(userID uint, userFileIDList []uint, path string) error {
 }
 
 // 获取用户删除的文件列表
-func GetRecycle(userID uint) ([]SelectFilesByUserIDAndPathResp, error) {
-	list := []SelectFilesByUserIDAndPathResp{}
-	// deleted_at 字段不为NULL ==> 该记录之前被删除了
-	res := db.Unscoped().Model(&UserFile{}).Where("`user_files`.user_id = ? and `user_files`.deleted_at is not null", userID).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&list)
-	return list, res.Error
+//func GetRecycle(userID uint) ([]SelectFilesByUserIDAndPathResp, error) {
+//	list := []SelectFilesByUserIDAndPathResp{}
+//	// deleted_at 字段不为NULL ==> 该记录之前被删除了
+//	res := db.Unscoped().Model(&UserFile{}).Where("`user_files`.user_id = ? and `user_files`.deleted_at is not null", userID).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&list)
+//	return list, res.Error
+//}
+
+// 恢复被删除的文件
+func ResumeFiles(userID uint, userFileIDList []uint) error {
+	// 先将Recycle表中的记录删除
+	err := ResumeRecycle(userID, userFileIDList)
+	if err != nil {
+		fmt.Println("提前退出")
+		return err
+	}
+	// 再将UserFile表中的deleted_at字段置为NULL
+	// 要加Unscoped()！！！
+	return db.Unscoped().Model(&UserFile{}).Where("user_id = ? and id in ?", userID, userFileIDList).Update("deleted_at", nil).Error
 }

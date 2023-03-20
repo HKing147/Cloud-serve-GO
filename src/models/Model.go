@@ -15,7 +15,7 @@ func Init() {
 		mysql.Open("root:root@tcp(localhost:3306)/test?charset=utf8mb4&parseTime=True&loc=Local"),
 		&gorm.Config{})
 	printError("连接数据库失败", err)
-	err = db.AutoMigrate(&User{}, &File{}, &UserFile{})
+	err = db.AutoMigrate(&User{}, &File{}, &UserFile{}, &Recycle{})
 	printError("建表失败", err)
 }
 
