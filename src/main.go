@@ -33,5 +33,7 @@ func main() {
 	r.POST("/api/deleteFiles", deleteFiles)
 	r.GET("/api/getRecycle", getRecycle)
 	r.POST("/api/resumeFiles", resumeFiles)
+	r.GET("/api/searchFile", searchFile)
+	r.POST("/api/renameFile", renameFile)
 	r.Run() // 监听并在 0.0.0.0:8080 上启动服务
 }

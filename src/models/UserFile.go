@@ -288,3 +288,58 @@ func ResumeFiles(userID uint, userFileIDList []uint) error {
 	}
 	return nil
 }
+
+// 查询文件
+func SearchFile(userID uint, fileName string) ([]SelectFilesByUserIDAndPathResp, error) {
+	fileList := []SelectFilesByUserIDAndPathResp{}
+	res := db.Model(&UserFile{}).Where("`user_files`.user_id = ? and file_name like ?", userID, "%"+fileName+"%").Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList)
+	return fileList, res.Error
+}
+
+// 递归(只)更新path
+func updatePathDown(userID uint, oldPath string, newPath string) error {
+	// 查询出它的子文件
+	fileList := []UserFile{}
+	err := db.Model(&UserFile{}).Where("user_id = ? and file_path = ?", userID, oldPath).Scan(&fileList).Error
+	if err != nil {
+		return err
+	}
+	for _, file := range fileList {
+		err = db.Model(&file).Update("file_path", newPath).Error
+		if err != nil {
+			return err
+		}
+		// 是文件夹继续递归
+		if file.IsFolder {
+			err = updatePathDown(userID, oldPath+file.FileName+"/", newPath+file.FileName+"/")
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// 重命名文件
+func RenameFile(userID uint, userFileID uint, newFileName string) error {
+	file := UserFile{}
+	err := db.Model(&UserFile{}).Where("user_id = ? and id = ?", userID, userFileID).Scan(&file).Error
+	if err != nil {
+		return err
+	}
+	// 先存下旧文件名
+	oldFileName := file.FileName
+	// 修改当前文件名
+	err = db.Model(&file).Update("file_name", newFileName).Error
+	if err != nil {
+		return err
+	}
+	// 如果修改的是文件夹，则还要将其子文件的path也修改
+	if file.IsFolder {
+		err = updatePathDown(userID, file.FilePath+oldFileName+"/", file.FilePath+newFileName+"/")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

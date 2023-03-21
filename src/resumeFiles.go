@@ -7,14 +7,14 @@ import (
 	"net/http"
 )
 
-type Form struct {
+type resumeFilesForm struct {
 	UserFileIDList []uint `json:"userFileIDList"`
 }
 
 // 恢复被删除的文件
 func resumeFiles(c *gin.Context) {
 	userID, _ := c.Get("userID")
-	form := Form{}
+	form := resumeFilesForm{}
 	c.BindJSON(&form)
 	fmt.Println("userID: ", userID.(uint), "form: ", form.UserFileIDList)
 	err := models.ResumeFiles(userID.(uint), form.UserFileIDList)
