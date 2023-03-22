@@ -53,9 +53,10 @@ type SelectFilesByUserIDAndPathResp struct {
 	FilePath  string    `json:"filePath"`
 	Size      int64     `json:"size"`
 	Type      string    `json:"type"`
-	NotFolder bool      `json:"notFolder"`
+	IsFolder  bool      `json:"isFolder"`
 	IsCollect bool      `json:"isCollect"`
 	IsShare   bool      `json:"isShare"`
+	CreatedAt time.Time `json:"createdTime"`
 	UpdatedAt time.Time `json:"updatedTime"`
 }
 

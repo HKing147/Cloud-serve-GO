@@ -17,7 +17,7 @@ func Init() {
 		&gorm.Config{Logger: logger.Default.LogMode(logger.Info)}) //配置日志级别，打印出所有的sql
 
 	printError("连接数据库失败", err)
-	err = db.AutoMigrate(&User{}, &File{}, &UserFile{}, &Recycle{})
+	err = db.AutoMigrate(&User{}, &File{}, &UserFile{}, &Recycle{}, &Share{})
 	printError("建表失败", err)
 }
 
