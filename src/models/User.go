@@ -21,9 +21,10 @@ type User struct {
 	Password string `json:"password" gorm:"password"` // 密码
 	QQ       string `json:"QQ" gorm:"qq"`             // QQ号
 	//RegisterTime int64  `json:"registerTime" gorm:"register_time"` // 注册时间
-	Space    int64  `json:"space" gorm:"space"`        // 网盘容量
-	UserName string `json:"userName" gorm:"user_name"` // 用户名
-	Wechat   string `json:"Wechat" gorm:"wechat"`      // 微信号
+	TotalSpace int64  `json:"totalSpace" gorm:"total_space;default:10737418240"` // 网盘容量(10G:10*1024*1024*1024)
+	UsedSpace  int64  `json:"usedSpace" gorm:"used_space"`                       // 已用容量
+	UserName   string `json:"userName" gorm:"user_name"`                         // 用户名
+	Wechat     string `json:"Wechat" gorm:"wechat"`                              // 微信号
 }
 
 type UserRegisterForm struct {
@@ -134,4 +135,9 @@ func SelectUserByID(userID uint) (User, error) {
 	user := User{}
 	result := db.Where("id = ?", userID).First(&user)
 	return user, result.Error
+}
+
+// 使用容量更新(+/-)
+func UpdateUsedSpace(userID uint, delta int64) error {
+	return db.Model(&User{}).Where("id = ?", userID).Update("used_space", gorm.Expr("used_space + ?", delta)).Error
 }

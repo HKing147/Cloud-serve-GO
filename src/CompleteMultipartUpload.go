@@ -80,7 +80,7 @@ func CompleteMultipartUpload(c *gin.Context) {
 		size: 文件大小
 		Type: 文件类型
 	*/
-	size, _ := strconv.ParseInt(c.DefaultPostForm("size", ""), 10, 64)
+	size, _ := strconv.ParseInt(c.DefaultPostForm("size", "0"), 10, 64)
 	urlDecode, _ := url.QueryUnescape(cmur.Location)
 	fmt.Printf("decode: %v  =>> %v", cmur.Location, urlDecode)
 	fileUrl := strings.ReplaceAll(urlDecode, srcObject, destObject)
@@ -111,6 +111,12 @@ func CompleteMultipartUpload(c *gin.Context) {
 		os.Exit(-1)
 	}
 
+	// User表usedSapce字段更新
+	err = models.UpdateUsedSpace(userID.(uint), size)
+	if err != nil {
+		fmt.Println("CompleteMultipartUpload Error:", err)
+		os.Exit(-1)
+	}
 	// 将文件MD5与文件ID写入Redis（永久有效）
 	DB.Set(MD5, fileID, 0)
 

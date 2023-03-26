@@ -100,7 +100,14 @@ func DeleteOneFile(userID uint, file UserFile) error {
 		return err
 	}
 	// UserFile表中删除这条记录: DeletedAt置为NULL
-	return db.Delete(&file).Error
+	err = db.Delete(&file).Error
+	if err != nil {
+		return err
+	}
+	// 更新usedSpace
+	var size int64
+	db.Model(&File{}).Where("id = ?", file.FileID).Select("size").Scan(&size)
+	return UpdateUsedSpace(userID, -size)
 }
 
 // 递归进入文件夹删除
@@ -122,6 +129,13 @@ func DeleteFileDown(userID uint, folder UserFile) error {
 		}
 		// 删除文件（不用向Recycle表中插入）
 		err = db.Delete(&file).Error
+		if err != nil {
+			return err
+		}
+		// 更新usedSpace
+		var size int64
+		db.Model(&File{}).Where("id = ?", file.FileID).Select("size").Scan(&size)
+		err = UpdateUsedSpace(userID, -size)
 		if err != nil {
 			return err
 		}
@@ -175,7 +189,14 @@ func ResumeOneFile(userID uint, file UserFile) error {
 		return err
 	}
 	// 再将UserFile中DeletedAt字段置为NULL
-	return db.Unscoped().Model(&file).Update("deleted_at", nil).Error
+	err = db.Unscoped().Model(&file).Update("deleted_at", nil).Error
+	if err != nil {
+		return err
+	}
+	// 更新usedSpace
+	var size int64
+	db.Model(&File{}).Where("id = ?", file.FileID).Select("size").Scan(&size)
+	return UpdateUsedSpace(userID, size)
 }
 
 // 向上恢复文件夹(一定要是文件夹！！！)
@@ -227,7 +248,8 @@ func ResumeFilesDown(userID uint, parent UserFile) error {
 	// 先查询出它的子文件
 	path := parent.FilePath + parent.FileName + "/"
 	fileList := []UserFile{}
-	err := db.Unscoped().Model(&UserFile{}).Where("user_id = ? and file_path = ?", userID, path).Scan(&fileList).Error
+	// deleted_at != null,已经恢复的不用管
+	err := db.Unscoped().Model(&UserFile{}).Where("user_id = ? and file_path = ? and deleted_at is not null", userID, path).Scan(&fileList).Error
 	if err != nil {
 		return err
 	}
@@ -241,6 +263,13 @@ func ResumeFilesDown(userID uint, parent UserFile) error {
 		// 恢复当前文件/文件夹
 		//err = ResumeOneFile(userID, file)// 错误
 		err = db.Unscoped().Model(&file).Update("deleted_at", nil).Error // 不用删除Recycle表的记录(不是第一层)
+		if err != nil {
+			return err
+		}
+		// 更新usedSpace
+		var size int64
+		db.Model(&File{}).Where("id = ?", file.FileID).Select("size").Scan(&size)
+		err = UpdateUsedSpace(userID, size)
 		if err != nil {
 			return err
 		}
