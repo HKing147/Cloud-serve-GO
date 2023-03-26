@@ -5,13 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"gorm.io/gorm"
+	"math/rand"
 	"strconv"
 	"time"
 )
 
 type Share struct {
 	gorm.Model
-	UserID uint `json:"userID"`
+	UserID   uint      `json:"userID"`
+	Password string    `json:"password"`
+	Duration time.Time `json:"duration" gorm:"default:null"` // 过期时间
 }
 
 type ShareFileList struct {
@@ -26,15 +29,25 @@ func (o *ShareFileList) UnmarshalBinary(data []byte) (err error) {
 	return json.Unmarshal(data, o)
 }
 
-func InsertShare(userID uint, userFileIDList []uint) error {
+func InsertShare(userID uint, userFileIDList []uint, shareMethod bool, shareDuration int) (uint, error) {
+	password := ""
+	if shareMethod { // 需要密码
+		for i := 0; i < 6; i++ {
+			password += string('a' + rand.Intn(26))
+		}
+	}
+	share := Share{UserID: userID, Password: password}
+	if shareDuration != 0 { // 有有效期
+		share.Duration = time.Now().AddDate(0, 0, shareDuration) // YY MM DD
+	}
 	// 先创建Share记录
-	share := Share{UserID: userID}
 	err := db.Create(&share).Error
 	if err != nil {
-		return err
+		return 0, err
 	}
 	// 再向Redis中插入<share_userID_shareID,userFileIDList>
-	return DB.Set("share_"+strconv.Itoa(int(userID))+"_"+strconv.Itoa(int(share.ID)), &ShareFileList{userFileIDList}, 30*24*time.Hour).Err()
+	err = DB.Set("share_"+strconv.Itoa(int(userID))+"_"+strconv.Itoa(int(share.ID)), &ShareFileList{userFileIDList}, 30*24*time.Hour).Err()
+	return share.ID, err
 }
 
 type GetShareListResp struct {
