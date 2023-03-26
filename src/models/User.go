@@ -129,3 +129,9 @@ func SelectUserByUserName(userName string) (user User, err error) {
 	result := db.Where("user_name = ?", userName).First(&user)
 	return user, result.Error
 }
+
+func SelectUserByID(userID uint) (User, error) {
+	user := User{}
+	result := db.Where("id = ?", userID).First(&user)
+	return user, result.Error
+}

@@ -26,7 +26,8 @@ type UserFile struct {
 func GetFileList(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	path := c.Query("path")
-	fileList, err := SelectFilesByUserIDAndPath(userID.(uint), path)
+	sortMethod := c.Query("sortMethod")
+	fileList, err := SelectFilesByUserIDAndPath(userID.(uint), path, sortMethod)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"meta": Meta{1, "error"}})
 		return
@@ -60,11 +61,14 @@ type SelectFilesByUserIDAndPathResp struct {
 	UpdatedAt time.Time `json:"updatedTime"`
 }
 
-func SelectFilesByUserIDAndPath(userID uint, path string) ([]SelectFilesByUserIDAndPathResp, error) {
+func SelectFilesByUserIDAndPath(userID uint, path string, sortMethod string) ([]SelectFilesByUserIDAndPathResp, error) {
 	//fileList := []SelectFilesByUserIDAndPathResp{}
 	fileList := []SelectFilesByUserIDAndPathResp{}
 	//db.Model(&UserFile{}).Where("`user_files`.user_id = ? and file_path like ?", userID, path+"%").Joins("File").Select("`user_files`.*, File.*").Scan(&res)
-	res := db.Model(&UserFile{}).Where("`user_files`.user_id = ? and file_path = ?", userID, path).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList)
+	if strings.HasPrefix(sortMethod, "updated_at") {
+		sortMethod = "`user_files`." + sortMethod
+	}
+	res := db.Model(&UserFile{}).Order("is_folder desc").Order(sortMethod).Where("`user_files`.user_id = ? and file_path = ?", userID, path).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList)
 	return fileList, res.Error
 }
 
@@ -340,6 +344,43 @@ func RenameFile(userID uint, userFileID uint, newFileName string) error {
 		err = updatePathDown(userID, file.FilePath+oldFileName+"/", file.FilePath+newFileName+"/")
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// 移动文件
+func MoveFiles(userID uint, fromFileIDList []uint, toFolderPath string) error {
+	// 第一层，直接把它们的filePath改为toFolderID的 filePath + fileName + "/"
+	//targetFolder := UserFile{}
+	//err := db.Model(&UserFile{}).Where("user_id = ? and id = ?", userID, toFolderID).Scan(&targetFolder).Error
+	//if err != nil {
+	//	return err
+	//}
+	//newPath := targetFolder.FilePath + targetFolder.FileName + "/"
+	for _, fileID := range fromFileIDList {
+		file := UserFile{}
+		err := db.Model(&UserFile{}).Where("user_id = ? and id = ?", userID, fileID).Scan(&file).Error
+		if err != nil {
+			return err
+		}
+		oldPath := file.FilePath + file.FileName + "/"
+		err = db.Model(&file).Update("file_path", toFolderPath).Error
+		if err != nil {
+			return err
+		}
+		// 递归进入文件夹修改
+		if file.IsFolder {
+			// 先查出文件夹下的所有文件
+			fileIDList := []uint{}
+			err = db.Model(&UserFile{}).Where("user_id = ? and file_path = ?", userID, oldPath).Select("id").Scan(&fileIDList).Error
+			if err != nil {
+				return err
+			}
+			err = MoveFiles(userID, fileIDList, toFolderPath+file.FileName+"/")
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

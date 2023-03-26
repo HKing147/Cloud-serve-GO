@@ -38,3 +38,10 @@ func ResumeRecycle(userID uint, userFileID uint) error {
 	return db.Model(&Recycle{}).Where("user_id = ? and user_file_id = ?", userID, userFileID).Delete(&Recycle{}).Error
 	// return db.Model(&Recycle{}).Delete("user_id = ? and user_file_id = ?", userID, userFileID).Error
 }
+
+// 从回收站中彻底删除文件（不用递归）
+func CompletelyDeleteFiles(userID uint, userFileIDList []uint) error {
+	fmt.Println("CompletelyDeleteFiles")
+	//return db.Model(&Recycle{}).Delete("user_id = ? and user_file_id in ?", userID, userFileIDList).Error
+	return db.Where("user_id = ? and user_file_id in ?", userID, userFileIDList).Delete(&Recycle{}).Error
+}

@@ -23,6 +23,7 @@ func main() {
 	r.POST("/api/CompleteMultipartUpload", CompleteMultipartUpload)
 	r.POST("/api/login", models.Login)
 	r.POST("/api/register", models.Register)
+	r.GET("/api/getUserInfo", getUserInfo)
 	r.GET("/api/getCheckCode", getCheckCode)
 	r.GET("/api/getFileList", models.GetFileList)
 	r.GET("/api/checkUploaded", checkUploaded)
@@ -38,5 +39,7 @@ func main() {
 	r.POST("/api/shareFiles", shareFiles)
 	r.GET("/api/getShareByID", getShareByID)
 	r.GET("/api/getShareList", getShareList)
+	r.POST("/api/completelyDeleteFiles", completelyDeleteFiles)
+	r.POST("/api/moveFiles", moveFiles)
 	r.Run() // 监听并在 0.0.0.0:8080 上启动服务
 }
