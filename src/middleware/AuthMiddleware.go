@@ -12,7 +12,17 @@ import (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fmt.Println("url:", c.Request.URL.Path)
-		if c.Request.URL.Path == "/api/login" || c.Request.URL.Path == "/api/register" || c.Request.URL.Path == "/api/getCheckCode" || c.Request.URL.Path == "/api/selectUserByID" { // 登录与注册放行
+		// 白名单
+		WHITE_PATHS := []string{"/api/login", "/api/register", "/api/getCheckCode", "/api/selectUserByID", "/api/getShareByShareUrl"}
+		exist := false
+		for _, path := range WHITE_PATHS {
+			if c.Request.URL.Path == path {
+				exist = true
+				break
+			}
+		}
+		//if c.Request.URL.Path == "/api/login" || c.Request.URL.Path == "/api/register" || c.Request.URL.Path == "/api/getCheckCode" || c.Request.URL.Path == "/api/selectUserByID" || c.Request.URL.Path == "getShareByShareUrl" { // 登录与注册放行
+		if exist {
 			c.Next()
 			return
 		}

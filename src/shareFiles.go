@@ -17,11 +17,11 @@ func shareFiles(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	form := shareFilesForm{}
 	c.BindJSON(&form)
-	shareID, err := models.InsertShare(userID.(uint), form.UserFileIDList, form.ShareMethod, form.ShareDuration)
+	share, err := models.InsertShare(userID.(uint), form.UserFileIDList, form.ShareMethod, form.ShareDuration)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "error"}})
 		return
 	}
-	shareUrl := fmt.Sprintf("share_%v_%v", userID, shareID)
-	c.JSON(http.StatusOK, gin.H{"meta": models.Meta{0, "success"}, "shareUrl": shareUrl})
+	shareUrl := fmt.Sprintf("share_%v_%v", userID, share.ID)
+	c.JSON(http.StatusOK, gin.H{"meta": models.Meta{0, "success"}, "shareUrl": shareUrl, "password": share.Password})
 }

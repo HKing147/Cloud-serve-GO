@@ -14,9 +14,9 @@ import (
 
 type Share struct {
 	gorm.Model
-	UserID         uint      `json:"userID"`
-	Password       string    `json:"password"`
-	ExpirationTime time.Time `json:"expirationTime" gorm:"default:null"` // 过期时间
+	UserID         uint           `json:"userID"`
+	Password       string         `json:"password"`
+	ExpirationTime gorm.DeletedAt `json:"expirationTime" gorm:"default:null"` // 过期时间
 }
 
 type ShareFileList struct {
@@ -31,7 +31,7 @@ func (o *ShareFileList) UnmarshalBinary(data []byte) (err error) {
 	return json.Unmarshal(data, o)
 }
 
-func InsertShare(userID uint, userFileIDList []uint, shareMethod bool, shareDuration int) (uint, error) {
+func InsertShare(userID uint, userFileIDList []uint, shareMethod bool, shareDuration int) (Share, error) {
 
 	share := Share{UserID: userID}
 	if shareMethod { // 需要密码
@@ -42,16 +42,16 @@ func InsertShare(userID uint, userFileIDList []uint, shareMethod bool, shareDura
 		share.Password = password
 	}
 	if shareDuration != 0 { // 有有效期
-		share.ExpirationTime = time.Now().AddDate(0, 0, shareDuration) // YY MM DD
+		share.ExpirationTime = gorm.DeletedAt{time.Now().AddDate(0, 0, shareDuration), true} // YY MM DD, NullTime.Valid = true ==> 非空
 	}
 	// 先创建Share记录
 	err := db.Create(&share).Error
 	if err != nil {
-		return 0, err
+		return Share{}, err
 	}
 	// 再向Redis中插入<share_userID_shareID,userFileIDList>
 	err = DB.Set("share_"+strconv.Itoa(int(userID))+"_"+strconv.Itoa(int(share.ID)), &ShareFileList{userFileIDList}, 30*24*time.Hour).Err()
-	return share.ID, err
+	return share, err
 }
 
 type GetShareListResp struct {
@@ -68,7 +68,7 @@ type GetShareListResp struct {
 func GetShareList(userID uint) ([]GetShareListResp, error) {
 	// 先获取到所有的shareID
 	shareList := []Share{}
-	err := db.Model(&Share{}).Where("user_id = ? and expiration_time < ?", userID, time.Now()).Scan(&shareList).Error
+	err := db.Model(&Share{}).Where("user_id = ? and (expiration_time is null or expiration_time > ?)", userID, time.Now()).Scan(&shareList).Error
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func GetShareList(userID uint) ([]GetShareListResp, error) {
 func GetShareByID(shareID uint) ([]SelectFilesByUserIDAndPathResp, error) {
 	// 先获得分享者ID
 	var userID uint
-	err := db.Model(&Share{}).Where("id = ? and expiration_time < ?", shareID, time.Now()).Select("user_id").Scan(&userID).Error
+	err := db.Model(&Share{}).Where("id = ? and (expiration_time is null or expiration_time > ?)", shareID, time.Now()).Select("user_id").Scan(&userID).Error
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func GetShareByID(shareID uint) ([]SelectFilesByUserIDAndPathResp, error) {
 }
 
 // 通过shareUrl获得分享的文件
-func GetShareByShareUrl(shareUrl string, sortMethod string) ([]SelectFilesByUserIDAndPathResp, error) {
+func GetShareByShareUrl(shareUrl string, sortMethod string) (Share, []SelectFilesByUserIDAndPathResp, error) {
 	if strings.HasPrefix(sortMethod, "updated_at") {
 		sortMethod = "`user_files`." + sortMethod
 	}
@@ -132,19 +132,29 @@ func GetShareByShareUrl(shareUrl string, sortMethod string) ([]SelectFilesByUser
 	list := strings.Split(shareUrl, "_")
 	fmt.Println(list)
 	if len(list) != 3 || list[0] != "share" {
-		return nil, errors.New("error")
+		return Share{}, nil, errors.New("error")
 	}
 	userID, err := strconv.Atoi(list[1])
 	if err != nil {
-		return nil, err
+		return Share{}, nil, err
+	}
+	shareID, err := strconv.Atoi(list[2])
+	if err != nil {
+		return Share{}, nil, err
+	}
+	// 获取Share信息（密码，过期时间）
+	shareInfo := Share{}
+	err = db.Model(&Share{}).Where("id = ? and user_id = ? and (expiration_time is null or expiration_time > ?)", shareID, userID, time.Now()).Scan(&shareInfo).Error
+	if err != nil {
+		return Share{}, nil, err
 	}
 	shareFileList := ShareFileList{}
 	err = DB.Get(shareUrl).Scan(&shareFileList)
 	if err != nil {
-		return nil, err
+		return Share{}, nil, err
 	}
 	// 获取具体的文件列表
 	fileList := []SelectFilesByUserIDAndPathResp{}
 	err = db.Model(&UserFile{}).Order("is_folder desc").Order(sortMethod).Where("`user_files`.user_id = ? and `user_files`.id in ?", userID, shareFileList.UserFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
-	return fileList, err
+	return shareInfo, fileList, err
 }
