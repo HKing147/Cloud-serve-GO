@@ -3,18 +3,20 @@ package models
 import (
 	"Cloud-serve/src/DB"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gorm.io/gorm"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type Share struct {
 	gorm.Model
-	UserID   uint      `json:"userID"`
-	Password string    `json:"password"`
-	Duration time.Time `json:"duration" gorm:"default:null"` // 过期时间
+	UserID         uint      `json:"userID"`
+	Password       string    `json:"password"`
+	ExpirationTime time.Time `json:"expirationTime" gorm:"default:null"` // 过期时间
 }
 
 type ShareFileList struct {
@@ -30,15 +32,17 @@ func (o *ShareFileList) UnmarshalBinary(data []byte) (err error) {
 }
 
 func InsertShare(userID uint, userFileIDList []uint, shareMethod bool, shareDuration int) (uint, error) {
-	password := ""
+
+	share := Share{UserID: userID}
 	if shareMethod { // 需要密码
+		password := ""
 		for i := 0; i < 6; i++ {
 			password += string('a' + rand.Intn(26))
 		}
+		share.Password = password
 	}
-	share := Share{UserID: userID, Password: password}
 	if shareDuration != 0 { // 有有效期
-		share.Duration = time.Now().AddDate(0, 0, shareDuration) // YY MM DD
+		share.ExpirationTime = time.Now().AddDate(0, 0, shareDuration) // YY MM DD
 	}
 	// 先创建Share记录
 	err := db.Create(&share).Error
@@ -64,7 +68,7 @@ type GetShareListResp struct {
 func GetShareList(userID uint) ([]GetShareListResp, error) {
 	// 先获取到所有的shareID
 	shareList := []Share{}
-	err := db.Model(&Share{}).Where("user_id = ?", userID).Scan(&shareList).Error
+	err := db.Model(&Share{}).Where("user_id = ? and expiration_time < ?", userID, time.Now()).Scan(&shareList).Error
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +107,7 @@ func GetShareList(userID uint) ([]GetShareListResp, error) {
 func GetShareByID(shareID uint) ([]SelectFilesByUserIDAndPathResp, error) {
 	// 先获得分享者ID
 	var userID uint
-	err := db.Model(&Share{}).Where("id = ?", shareID).Select("user_id").Scan(&userID).Error
+	err := db.Model(&Share{}).Where("id = ? and expiration_time < ?", shareID, time.Now()).Select("user_id").Scan(&userID).Error
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +119,32 @@ func GetShareByID(shareID uint) ([]SelectFilesByUserIDAndPathResp, error) {
 	}
 	// 最后在获取具体的文件列表
 	fileList := []SelectFilesByUserIDAndPathResp{}
-	err = db.Model(&UserFile{}).Where("`user_files`.user_id = ? and `user_files`.id in ?", userID, shareFileList.UserFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
+	err = db.Model(&UserFile{}).Order("is_folder desc").Where("`user_files`.user_id = ? and `user_files`.id in ?", userID, shareFileList.UserFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
+	return fileList, err
+}
+
+// 通过shareUrl获得分享的文件
+func GetShareByShareUrl(shareUrl string, sortMethod string) ([]SelectFilesByUserIDAndPathResp, error) {
+	if strings.HasPrefix(sortMethod, "updated_at") {
+		sortMethod = "`user_files`." + sortMethod
+	}
+
+	list := strings.Split(shareUrl, "_")
+	fmt.Println(list)
+	if len(list) != 3 || list[0] != "share" {
+		return nil, errors.New("error")
+	}
+	userID, err := strconv.Atoi(list[1])
+	if err != nil {
+		return nil, err
+	}
+	shareFileList := ShareFileList{}
+	err = DB.Get(shareUrl).Scan(&shareFileList)
+	if err != nil {
+		return nil, err
+	}
+	// 获取具体的文件列表
+	fileList := []SelectFilesByUserIDAndPathResp{}
+	err = db.Model(&UserFile{}).Order("is_folder desc").Order(sortMethod).Where("`user_files`.user_id = ? and `user_files`.id in ?", userID, shareFileList.UserFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
 	return fileList, err
 }

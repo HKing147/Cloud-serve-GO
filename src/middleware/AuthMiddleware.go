@@ -12,7 +12,7 @@ import (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fmt.Println("url:", c.Request.URL.Path)
-		if c.Request.URL.Path == "/api/login" || c.Request.URL.Path == "/api/register" || c.Request.URL.Path == "/api/getCheckCode" { // 登录与注册放行
+		if c.Request.URL.Path == "/api/login" || c.Request.URL.Path == "/api/register" || c.Request.URL.Path == "/api/getCheckCode" || c.Request.URL.Path == "/api/selectUserByID" { // 登录与注册放行
 			c.Next()
 			return
 		}

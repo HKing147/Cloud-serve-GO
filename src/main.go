@@ -24,6 +24,7 @@ func main() {
 	r.POST("/api/login", models.Login)
 	r.POST("/api/register", models.Register)
 	r.GET("/api/getUserInfo", getUserInfo)
+	r.GET("/api/selectUserByID", selectUserByID) // 不需要登陆
 	r.GET("/api/getCheckCode", getCheckCode)
 	r.GET("/api/getFileList", models.GetFileList)
 	r.GET("/api/checkUploaded", checkUploaded)
@@ -41,5 +42,6 @@ func main() {
 	r.GET("/api/getShareList", getShareList)
 	r.POST("/api/completelyDeleteFiles", completelyDeleteFiles)
 	r.POST("/api/moveFiles", moveFiles)
+	r.GET("/api/getShareByShareUrl", getShareByShareUrl)
 	r.Run() // 监听并在 0.0.0.0:8080 上启动服务
 }
