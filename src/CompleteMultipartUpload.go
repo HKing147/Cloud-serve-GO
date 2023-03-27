@@ -110,13 +110,13 @@ func CompleteMultipartUpload(c *gin.Context) {
 		fmt.Println("CompleteMultipartUpload Error:", err)
 		os.Exit(-1)
 	}
-
-	// User表usedSapce字段更新
-	err = models.UpdateUsedSpace(userID.(uint), size)
-	if err != nil {
-		fmt.Println("CompleteMultipartUpload Error:", err)
-		os.Exit(-1)
-	}
+	//
+	//// User表usedSapce字段更新
+	//err = models.UpdateUsedSpace(userID.(uint), size)
+	//if err != nil {
+	//	fmt.Println("CompleteMultipartUpload Error:", err)
+	//	os.Exit(-1)
+	//}
 	// 将文件MD5与文件ID写入Redis（永久有效）
 	DB.Set(MD5, fileID, 0)
 

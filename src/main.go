@@ -43,5 +43,6 @@ func main() {
 	r.POST("/api/completelyDeleteFiles", completelyDeleteFiles)
 	r.POST("/api/moveFiles", moveFiles)
 	r.GET("/api/getShareByShareUrl", getShareByShareUrl)
+	r.POST("/api/saveFiles", saveFiles)
 	r.Run() // 监听并在 0.0.0.0:8080 上启动服务
 }

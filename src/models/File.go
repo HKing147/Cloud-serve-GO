@@ -36,3 +36,9 @@ func InsertFile(fileUrl string, size int64, Type string, MD5 string) (*File, err
 	res := db.Create(&file)
 	return &file, res.Error
 }
+
+func GetFileByID(fileID int) (File, error) {
+	file := File{}
+	err := db.Model(&File{}).Where("id = ?", fileID).Scan(&file).Error
+	return file, err
+}

@@ -17,9 +17,9 @@ func checkUploaded(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "没上传过。"}})
 		return
 	}
-	// 上传过，更新user_files数据库(fileID(查),fileName,filePath)
+
 	userID, _ := c.Get("userID")
-	fileID, _ := strconv.ParseUint(fileIDStr, 10, 32)
+	fileID, _ := strconv.Atoi(fileIDStr)
 	fileName := c.Query("fileName")
 	filePath := c.Query("path")
 	models.InsertUserFile(userID.(uint), uint(fileID), fileName, filePath, false)

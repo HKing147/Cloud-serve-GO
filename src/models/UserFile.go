@@ -43,8 +43,17 @@ func InsertUserFile(userID uint, fileID uint, fileName string, filePath string, 
 		FilePath: filePath,
 		IsFolder: isFolder,
 	}
-	res := db.Create(&userFile)
-	return res.Error
+	err := db.Create(&userFile).Error
+	if err != nil {
+		return err
+	}
+	var size int64
+	err = db.Model(&File{}).Where("id = ?", fileID).Select("size").Scan(&size).Error
+	if err != nil {
+		return err
+	}
+	// User表usedSapce字段更新
+	return UpdateUsedSpace(userID, size)
 }
 
 type SelectFilesByUserIDAndPathResp struct {
@@ -410,6 +419,55 @@ func MoveFiles(userID uint, fromFileIDList []uint, toFolderPath string) error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// 转存文件
+func SaveFiles(userID uint, userFileIDList []uint, savePath string) error {
+	for _, userFileID := range userFileIDList {
+		file := UserFile{}
+		err := db.Model(&UserFile{}).Where("id = ?", userFileID).Scan(&file).Error
+		if err != nil {
+			return err
+		}
+		fileName_ := file.FileName
+		fileType := ""
+		if !file.IsFolder { // 不是文件夹（需要抠出文件后缀）
+			list := strings.Split(file.FileName, ".")
+			fileName_ = file.FileName[:len(file.FileName)-len(list[len(list)-1])-1]
+			fileType = "." + list[len(list)-1]
+		}
+		i := 0
+		for {
+			fileName := fileName_
+			if i != 0 {
+				fileName += fmt.Sprintf("(%v)", i)
+			}
+			// 查询之前目录下是否已经存在同名文件
+			var tmp uint
+			db.Model(&UserFile{}).Where("user_id = ? and file_path = ? and file_name = ?", userID, savePath, fileName+fileType).Select("id").First(&tmp)
+			if tmp == 0 { // 不存在同名文件
+				// 插入新文件
+				err = InsertUserFile(userID, file.FileID, fileName+fileType, savePath, file.IsFolder)
+				if err != nil {
+					return err
+				}
+				if file.IsFolder { // 是文件夹，递归
+					sonIDList := []uint{}
+					err := db.Model(&UserFile{}).Where("file_path = ?", file.FilePath+file.FileName+"/").Select("id").Scan(&sonIDList).Error
+					if err != nil {
+						return err
+					}
+					err = SaveFiles(userID, sonIDList, savePath+fileName+fileType+"/")
+					if err != nil {
+						return err
+					}
+				}
+				break
+			}
+			i++
 		}
 	}
 	return nil
