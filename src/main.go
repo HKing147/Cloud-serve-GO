@@ -24,9 +24,11 @@ func main() {
 	r.POST("/api/login", models.Login)
 	r.POST("/api/register", models.Register)
 	r.GET("/api/getUserInfo", getUserInfo)
+	r.POST("/api/uploadAvatar", uploadAvatar)
 	r.GET("/api/selectUserByID", selectUserByID) // 不需要登陆
 	r.GET("/api/getCheckCode", getCheckCode)
 	r.GET("/api/getFileList", models.GetFileList)
+	r.GET("/api/getFileListByFolderID", getFileListByFolderID)
 	r.GET("/api/checkUploaded", checkUploaded)
 	r.POST("/api/createFolder", createFolder)
 	r.POST("/api/collectedFiles", collectedFiles)

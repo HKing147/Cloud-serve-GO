@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -33,6 +34,12 @@ func GetFileList(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"meta": Meta{0, "success"}, "fileList": fileList})
+}
+
+func GetFileListByFolderID(folderID uint, sortMethod string) ([]SelectFilesByUserIDAndPathResp, error) {
+	folder := UserFile{}
+	db.Model(&UserFile{}).Where("id = ?", folderID).Scan(&folder)
+	return SelectFilesByUserIDAndPath(folder.UserID, folder.FilePath+folder.FileName+"/", sortMethod)
 }
 
 func InsertUserFile(userID uint, fileID uint, fileName string, filePath string, isFolder bool) error {
@@ -449,11 +456,13 @@ func SaveFiles(userID uint, userFileIDList []uint, savePath string) error {
 			var tmp uint
 			db.Model(&UserFile{}).Where("user_id = ? and file_path = ? and file_name = ?", userID, savePath, fileName+fileType).Select("id").First(&tmp)
 			if tmp == 0 { // 不存在同名文件
+				log.Printf("文件：%v可以插入（没有同名文件）\n", fileName+fileType)
 				// 插入新文件
 				err = InsertUserFile(userID, file.FileID, fileName+fileType, savePath, file.IsFolder)
 				if err != nil {
 					return err
 				}
+
 				if file.IsFolder { // 是文件夹，递归
 					sonIDList := []uint{}
 					err := db.Model(&UserFile{}).Where("file_path = ?", file.FilePath+file.FileName+"/").Select("id").Scan(&sonIDList).Error
@@ -465,6 +474,7 @@ func SaveFiles(userID uint, userFileIDList []uint, savePath string) error {
 						return err
 					}
 				}
+
 				break
 			}
 			i++

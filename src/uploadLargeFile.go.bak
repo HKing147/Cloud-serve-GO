@@ -9,20 +9,20 @@ import (
 
 func uploadLargeFile(c *gin.Context) {
 	fmt.Print(c)
-	//file, _ := c.GetPostForm("file")
-	file, _ := c.FormFile("file")
+	//folder, _ := c.GetPostForm("folder")
+	folder, _ := c.FormFile("folder")
 	idx := c.DefaultPostForm("idx", "defaultIdx")
-	//fmt.Println("====>", file)
+	//fmt.Println("====>", folder)
 
-	//OSS.UploadFile(file)
-	_, err := os.Stat("./" + file.Filename)
+	//OSS.UploadFile(folder)
+	_, err := os.Stat("./" + folder.Filename)
 	if err != nil {
-		os.MkdirAll("./"+file.Filename, os.ModePerm)
+		os.MkdirAll("./"+folder.Filename, os.ModePerm)
 	}
-	savePath := "./" + file.Filename + "/" + idx
-	filePtr, err := file.Open()
+	savePath := "./" + folder.Filename + "/" + idx
+	filePtr, err := folder.Open()
 	if err != nil {
-		fmt.Println("file error")
+		fmt.Println("folder error")
 		return
 	}
 	defer filePtr.Close()

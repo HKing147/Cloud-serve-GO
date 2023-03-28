@@ -13,7 +13,7 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fmt.Println("url:", c.Request.URL.Path)
 		// 白名单
-		WHITE_PATHS := []string{"/api/login", "/api/register", "/api/getCheckCode", "/api/selectUserByID", "/api/getShareByShareUrl"}
+		WHITE_PATHS := []string{"/api/login", "/api/register", "/api/getCheckCode", "/api/selectUserByID", "/api/getShareByShareUrl", "/api/getFileListByFolderID"}
 		exist := false
 		for _, path := range WHITE_PATHS {
 			if c.Request.URL.Path == path {

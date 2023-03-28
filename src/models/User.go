@@ -141,3 +141,8 @@ func SelectUserByID(userID uint) (User, error) {
 func UpdateUsedSpace(userID uint, delta int64) error {
 	return db.Model(&User{}).Where("id = ?", userID).Update("used_space", gorm.Expr("used_space + ?", delta)).Error
 }
+
+// 头像更新
+func UpdateAvatar(userID uint, avatar string) error {
+	return db.Model(&User{}).Where("id = ?", userID).Update("avatar", avatar).Error
+}

@@ -8,7 +8,7 @@
       <jdbc-url>jdbc:redis://47.100.190.87:6379/0</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="test@localhost" uuid="8967cf29-bd54-4d7a-8e2b-3fb485ad893c">
+    <data-source source="LOCAL" name="test@localhost" uuid="8ce23969-222a-4903-ab6f-95427d4d29e8">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
