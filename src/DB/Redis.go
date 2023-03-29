@@ -50,7 +50,8 @@ var ctx context.Context
 
 func InitRedis() {
 	rd = redis.NewClient(&redis.Options{
-		Addr:     "47.100.190.87:6379", // url
+		Addr: "localhost:6379", // 发布
+		//Addr:     "47.100.190.87:6379", // 开发
 		Password: "flzx3qc",
 		DB:       0, // 0号数据库
 	})

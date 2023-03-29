@@ -8,11 +8,11 @@
       <jdbc-url>jdbc:redis://47.100.190.87:6379/0</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="test@localhost" uuid="8ce23969-222a-4903-ab6f-95427d4d29e8">
+    <data-source source="LOCAL" name="远程MySQL" uuid="9a655b6d-0966-449c-a7ff-cebfbbb25747">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
-      <jdbc-url>jdbc:mysql://localhost:3306/test</jdbc-url>
+      <jdbc-url>jdbc:mysql://47.100.190.87:3306/cloud</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

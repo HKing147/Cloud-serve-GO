@@ -13,7 +13,8 @@ var db *gorm.DB
 func Init() {
 	var err error
 	db, err = gorm.Open(
-		mysql.Open("root:root@tcp(localhost:3306)/test?charset=utf8mb4&parseTime=True&loc=Local"),
+		mysql.Open("root:root@tcp(localhost:3306)/cloud?charset=utf8mb4&parseTime=True&loc=Local"), // 发布
+		//mysql.Open("root:root@tcp(47.100.190.87:3306)/cloud?charset=utf8mb4&parseTime=True&loc=Local"), // 开发
 		&gorm.Config{Logger: logger.Default.LogMode(logger.Info)}) //配置日志级别，打印出所有的sql
 
 	printError("连接数据库失败", err)

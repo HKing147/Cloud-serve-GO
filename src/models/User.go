@@ -15,8 +15,8 @@ import (
 // User
 type User struct {
 	gorm.Model
-	Avatar string `json:"avatar" gorm:"avatar"` // 头像
-	Email  string `json:"email" gorm:"email"`   // 邮箱
+	Avatar string `json:"avatar" gorm:"avatar;default:'https://cdn.acwing.com/media/user/profile/photo/254527_md_7b2379fc68.jpg'"` // 头像
+	Email  string `json:"email" gorm:"email"`                                                                                      // 邮箱
 	//ID           int64  `json:"id" gorm:"id"`                      // 用户ID
 	Password string `json:"password" gorm:"password"` // 密码
 	QQ       string `json:"QQ" gorm:"qq"`             // QQ号
@@ -75,8 +75,9 @@ func Register(c *gin.Context) {
 	}
 	// Token写入Redis
 	DB.Set(user.Email+"_token", token, time.Hour) // 有效期一小时
-	c.SetSameSite(http.SameSiteNoneMode)
-	c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", true, false)
+	//c.SetSameSite(http.SameSiteNoneMode)
+	//c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", true, false)
+	c.SetCookie("token", token, 60*60, "/", "http://47.100.190.87", false, false)
 	c.JSON(http.StatusOK, gin.H{"meta": Meta{0, "注册成功"}, "token": token})
 }
 
@@ -111,8 +112,9 @@ func Login(c *gin.Context) {
 	// Token写入Redis
 	DB.Set(user.Email+"_token", token, time.Hour) // 有效期一小时
 	//c.SetSameSite(http.SameSiteNoneMode)
-	c.SetSameSite(http.SameSiteNoneMode)
-	c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", true, false)
+	//c.SetSameSite(http.SameSiteNoneMode)
+	//c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", true, false)
+	c.SetCookie("token", token, 60*60, "/", "http://47.100.190.87", false, false)
 	c.JSON(http.StatusOK, gin.H{"meta": Meta{0, "登录成功！"}, "token": token})
 }
 
