@@ -36,6 +36,7 @@ func main() {
 	r.GET("/api/getAlbum", getAlbum)
 	r.POST("/api/deleteFiles", deleteFiles)
 	r.GET("/api/getRecycle", getRecycle)
+	r.POST("/api/clearRecycle", clearRecycle)
 	r.POST("/api/resumeFiles", resumeFiles)
 	r.GET("/api/searchFile", searchFile)
 	r.POST("/api/renameFile", renameFile)

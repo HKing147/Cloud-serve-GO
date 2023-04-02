@@ -2,6 +2,7 @@ package main
 
 import (
 	"Cloud-serve/src/models"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -17,6 +18,7 @@ func deleteFiles(c *gin.Context) {
 	c.BindJSON(&form)
 	err := models.DeleteFiles(userID.(uint), form.UserFileIDList, form.Path)
 	if err != nil {
+		fmt.Println("出错啦！！！", err)
 		c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "error"}})
 		return
 	}

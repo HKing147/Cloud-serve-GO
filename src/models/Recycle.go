@@ -25,6 +25,11 @@ func GetRecycle(userID uint) ([]SelectFilesByUserIDAndPathResp, error) {
 	return list, res.Error
 }
 
+// 清空用户的回收站
+func ClearRecycle(userID uint) error {
+	return db.Model(&Recycle{}).Where("user_id = ?", userID).Delete(&Recycle{}).Error
+}
+
 // 取消删除文件
 //func ResumeRecycle(userID uint, userFileIDList []uint) error {
 //	// 删除这些记录

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -42,7 +43,7 @@ func GetFileListByFolderID(folderID uint, sortMethod string) ([]SelectFilesByUse
 	return SelectFilesByUserIDAndPath(folder.UserID, folder.FilePath+folder.FileName+"/", sortMethod)
 }
 
-func InsertUserFile(userID uint, fileID uint, fileName string, filePath string, isFolder bool) error {
+func AddUserFile(userID uint, fileID uint, fileName string, filePath string, isFolder bool) (UserFile, error) {
 	userFile := UserFile{
 		UserID:   userID,
 		FileID:   fileID,
@@ -52,16 +53,72 @@ func InsertUserFile(userID uint, fileID uint, fileName string, filePath string, 
 	}
 	err := db.Create(&userFile).Error
 	if err != nil {
-		return err
+		return userFile, err
 	}
 	var size int64
 	err = db.Model(&File{}).Where("id = ?", fileID).Select("size").Scan(&size).Error
 	if err != nil {
-		return err
+		return userFile, err
 	}
 	// User表usedSapce字段更新
-	return UpdateUsedSpace(userID, size)
+	return userFile, UpdateUsedSpace(userID, size)
 }
+
+// 保证同一目录下不存在同名文件
+func InsertUserFile(userID uint, fileID uint, fileName string, filePath string, isFolder bool) (userFile UserFile, err error) {
+	fileName_ := fileName
+	fileType := ""
+	if !isFolder { // 不是文件夹（需要抠出文件后缀）
+		list := strings.Split(fileName, ".")
+		fileName_ = fileName[:len(fileName)-len(list[len(list)-1])-1]
+		fileType = "." + list[len(list)-1]
+	}
+	i := 0
+
+	for {
+		fileName := fileName_
+		if i != 0 {
+			fileName += fmt.Sprintf("(%v)", i)
+		}
+		// 查询之前目录下是否已经存在同名文件
+		var tmp uint
+		db.Model(&UserFile{}).Where("user_id = ? and file_path = ? and file_name = ?", userID, filePath, fileName+fileType).Select("id").First(&tmp)
+		if tmp == 0 { // 不存在同名文件
+			log.Printf("文件：%v可以插入（没有同名文件）\n", fileName+fileType)
+			// 插入新文件
+			userFile, err = AddUserFile(userID, fileID, fileName+fileType, filePath, isFolder)
+			if err != nil {
+				return userFile, err
+			}
+			break
+		}
+		i++
+	}
+	return userFile, err
+}
+
+/*
+	func InsertUserFile(userID uint, fileID uint, fileName string, filePath string, isFolder bool) error {
+		userFile := UserFile{
+			UserID:   userID,
+			FileID:   fileID,
+			FileName: fileName,
+			FilePath: filePath,
+			IsFolder: isFolder,
+		}
+		err := db.Create(&userFile).Error
+		if err != nil {
+			return err
+		}
+		var size int64
+		err = db.Model(&File{}).Where("id = ?", fileID).Select("size").Scan(&size).Error
+		if err != nil {
+			return err
+		}
+		// User表usedSapce字段更新
+		return UpdateUsedSpace(userID, size)
+	}
+*/
 
 type SelectFilesByUserIDAndPathResp struct {
 	ID        uint      `json:"id"`
@@ -162,6 +219,67 @@ func DeleteFileDown(userID uint, folder UserFile) error {
 // 只有第一层的文件才会向Recycle表中插入一条记录
 func DeleteFiles(userID uint, userFileIDList []uint, path string) error {
 	//return db.Model(&UserFile{}).Delete("user_id = ? and file_id in ? file_path = ?", userID, fileIDList, path).Error
+	waitGroup := &sync.WaitGroup{}
+	//任务数量
+	taskNums := len(userFileIDList)
+	waitGroup.Add(taskNums)
+	//定义结果集channel
+	errChannel := make(chan error, taskNums)
+
+	// 递归删除
+	for _, userFileID := range userFileIDList {
+		go func(userFileID uint) {
+			defer waitGroup.Done()
+			// 先看它是否是文件夹
+			file := UserFile{}
+			err := db.Model(&UserFile{}).Where("id = ? and user_id = ? and file_path = ?", userFileID, userID, path).Scan(&file).Error
+			if err != nil {
+				errChannel <- err
+				return
+			}
+			//db.Model(&UserFile{}).Delete("file_id = ? and user_id = ? and file_path = ?", fileID, userID, path)
+			if file.IsFolder { // 是文件夹
+				// 递归进入删除
+				//err = DeleteFileDown(userID, []UserFile{file}, path+file.FileName+"/")
+				err = DeleteFileDown(userID, file)
+				if err != nil {
+					errChannel <- err
+					return
+				}
+			}
+			// 删除该文件, 不管是否是文件夹
+			err = DeleteOneFile(userID, file) // 需要向Recycle表中插入一条记录
+			if err != nil {
+				errChannel <- err
+				return
+			}
+
+			errChannel <- err
+		}(userFileID)
+	}
+
+	//等待所有协程任务完成并关闭结果集通道
+	go func() {
+		//关闭结果集通道
+		defer close(errChannel)
+		waitGroup.Wait()
+	}()
+
+	// 读取各协程返回的err(查看是否有err)
+	for err := range errChannel {
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+/*
+// 只有第一层的文件才会向Recycle表中插入一条记录
+func DeleteFiles(userID uint, userFileIDList []uint, path string) error {
+	//return db.Model(&UserFile{}).Delete("user_id = ? and file_id in ? file_path = ?", userID, fileIDList, path).Error
+
 	// 递归删除
 	for _, userFileID := range userFileIDList {
 		// 先看它是否是文件夹
@@ -187,6 +305,7 @@ func DeleteFiles(userID uint, userFileIDList []uint, path string) error {
 	}
 	return nil
 }
+*/
 
 // 获取用户删除的文件列表
 //func GetRecycle(userID uint) ([]SelectFilesByUserIDAndPathResp, error) {
@@ -293,26 +412,74 @@ func ResumeFilesDown(userID uint, parent UserFile) error {
 	return nil
 }
 
-// 恢复被删除的文件(只有第一层才会将UserFile表中的deleted_at置为NULL)
+// 恢复被删除的文件(只有第一层才会将UserFile表中的deleted_at置为NULL)（协程版）
 func ResumeFiles(userID uint, userFileIDList []uint) error {
 	/**
-	简单恢复
-	*/
-	//// 先将Recycle表中的记录删除
-	//err := ResumeRecycle(userID, userFileIDList)
-	//if err != nil {
-	//	fmt.Println("提前退出")
-	//	return err
-	//}
-	//// 再将UserFile表中的deleted_at字段置为NULL
-	//// 要加Unscoped()！！！
-	//return db.Unscoped().Model(&UserFile{}).Where("user_id = ? and id in ?", userID, userFileIDList).Update("deleted_at", nil).Error
-
-	/**
-	TODO: file如果是文件夹还要做到：
+	file如果是文件夹还要做到：
 		1.向上恢复包含它的文件夹
 		2.向下递归恢复其子文件
 	*/
+	waitGroup := &sync.WaitGroup{}
+	//任务数量
+	taskNums := len(userFileIDList)
+	waitGroup.Add(taskNums)
+	//定义结果集channel
+	errChannel := make(chan error, taskNums)
+
+	for _, userFileID := range userFileIDList {
+		go func(userFileID uint) {
+			defer waitGroup.Done()
+			file := UserFile{}
+			db.Unscoped().Model(&UserFile{}).Where("user_id = ? and id = ?", userID, userFileID).Scan(&file)
+
+			// 1.向上恢复包含它的父文件夹(文件和文件夹都要)
+			err := ResumeFolderUP(userID, file)
+			if err != nil {
+				errChannel <- err
+				return
+			}
+			if file.IsFolder { // 是文件夹
+				// 2.向下递归恢复其子文件（是由文件夹才要递归下去）
+				err = ResumeFilesDown(userID, file)
+				if err != nil {
+					errChannel <- err
+					return
+				}
+			}
+			// 不管是文件夹还是文件，都要将Recycle表中记录删除，(只有第一层)将UserFile表中的deleted_at置为NULL
+			err = ResumeOneFile(userID, file)
+			if err != nil {
+				errChannel <- err
+				return
+			}
+		}(userFileID)
+	}
+
+	//等待所有协程任务完成并关闭结果集通道
+	go func() {
+		//关闭结果集通道
+		defer close(errChannel)
+		waitGroup.Wait()
+	}()
+
+	// 读取各协程返回的err(查看是否有err)
+	for err := range errChannel {
+		if err != nil {
+			fmt.Println("出错啦！！！", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+/*
+// 恢复被删除的文件(只有第一层才会将UserFile表中的deleted_at置为NULL)
+func ResumeFiles(userID uint, userFileIDList []uint) error {
+	//file如果是文件夹还要做到：
+	//	1.向上恢复包含它的文件夹
+	//	2.向下递归恢复其子文件
+
 	// 先判断是否是文件夹
 	for _, userFileID := range userFileIDList {
 		file := UserFile{}
@@ -338,6 +505,7 @@ func ResumeFiles(userID uint, userFileIDList []uint) error {
 	}
 	return nil
 }
+*/
 
 // 查询文件
 func SearchFile(userID uint, fileName string) ([]SelectFilesByUserIDAndPathResp, error) {
@@ -439,6 +607,35 @@ func SaveFiles(userID uint, userFileIDList []uint, savePath string) error {
 		if err != nil {
 			return err
 		}
+		userFile, err := InsertUserFile(userID, file.FileID, file.FileName, savePath, file.IsFolder)
+		if err != nil {
+			return err
+		}
+
+		if file.IsFolder { // 是文件夹，递归
+			sonIDList := []uint{}
+			err := db.Model(&UserFile{}).Where("file_path = ?", file.FilePath+file.FileName+"/").Select("id").Scan(&sonIDList).Error
+			if err != nil {
+				return err
+			}
+			err = SaveFiles(userID, sonIDList, savePath+userFile.FileName+"/")
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+/*
+// 转存文件
+func SaveFiles(userID uint, userFileIDList []uint, savePath string) error {
+	for _, userFileID := range userFileIDList {
+		file := UserFile{}
+		err := db.Model(&UserFile{}).Where("id = ?", userFileID).Scan(&file).Error
+		if err != nil {
+			return err
+		}
 		fileName_ := file.FileName
 		fileType := ""
 		if !file.IsFolder { // 不是文件夹（需要抠出文件后缀）
@@ -482,3 +679,4 @@ func SaveFiles(userID uint, userFileIDList []uint, savePath string) error {
 	}
 	return nil
 }
+*/

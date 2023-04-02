@@ -76,8 +76,8 @@ func Register(c *gin.Context) {
 	// Token写入Redis
 	DB.Set(user.Email+"_token", token, time.Hour) // 有效期一小时
 	//c.SetSameSite(http.SameSiteNoneMode)
-	//c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", true, false)
-	c.SetCookie("token", token, 60*60, "/", "http://47.100.190.87", false, false)
+	//c.SetCookie("token", token, 60*60, "/", "http://www.lab-0.com", false, false) // 发布
+	c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", false, false) // 开发
 	c.JSON(http.StatusOK, gin.H{"meta": Meta{0, "注册成功"}, "token": token})
 }
 
@@ -113,8 +113,8 @@ func Login(c *gin.Context) {
 	DB.Set(user.Email+"_token", token, time.Hour) // 有效期一小时
 	//c.SetSameSite(http.SameSiteNoneMode)
 	//c.SetSameSite(http.SameSiteNoneMode)
-	//c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", true, false)
-	c.SetCookie("token", token, 60*60, "/", "http://47.100.190.87", false, false)
+	//c.SetCookie("token", token, 60*60, "/", "http://www.lab-0.com", false, false) // 发布
+	c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", false, false) // 开发
 	c.JSON(http.StatusOK, gin.H{"meta": Meta{0, "登录成功！"}, "token": token})
 }
 

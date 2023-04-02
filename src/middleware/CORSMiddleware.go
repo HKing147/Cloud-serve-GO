@@ -16,8 +16,8 @@ func Cors() gin.HandlerFunc {
 		method := c.Request.Method
 
 		//c.Header("Access-Control-Allow-Origin", "*")
-		//c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
-		c.Header("Access-Control-Allow-Origin", "http://47.100.190.87")
+		//c.Header("Access-Control-Allow-Origin", "http://www.lab-0.com") // 发布
+		c.Header("Access-Control-Allow-Origin", "http://localhost:5173") // 开发
 		//服务器支持的所有跨域请求的方法
 		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE,UPDATE")
 		//允许跨域设置可以返回其他子段，可以自定义字段

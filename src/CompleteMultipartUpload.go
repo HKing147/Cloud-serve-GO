@@ -105,7 +105,7 @@ func CompleteMultipartUpload(c *gin.Context) {
 	//fmt.Printf("cmur.Key: %v\n", cmur.Key) // 文件名(路径)
 	//filePath := path + fileName
 	//isFolder := false
-	err = models.InsertUserFile(userID.(uint), fileID, fileName, path, false)
+	_, err = models.InsertUserFile(userID.(uint), fileID, fileName, path, false)
 	if err != nil {
 		fmt.Println("CompleteMultipartUpload Error:", err)
 		os.Exit(-1)
