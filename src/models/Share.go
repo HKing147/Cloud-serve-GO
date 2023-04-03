@@ -32,7 +32,6 @@ func (o *ShareFileList) UnmarshalBinary(data []byte) (err error) {
 }
 
 func InsertShare(userID uint, userFileIDList []uint, shareMethod bool, shareDuration int) (Share, error) {
-
 	share := Share{UserID: userID}
 	if shareMethod { // 需要密码
 		password := ""
@@ -54,8 +53,24 @@ func InsertShare(userID uint, userFileIDList []uint, shareMethod bool, shareDura
 	return share, err
 }
 
+func DeleteShares(userID uint, shareIDList []uint) error {
+	// 从Share表中删除
+	err := db.Where("user_id = ? and id in ?", userID, shareIDList).Delete(&Share{}).Error
+	if err != nil {
+		return err
+	}
+	// 从redis中删除
+	keys := make([]string, len(shareIDList))
+	for i, shareID := range shareIDList {
+		key := fmt.Sprintf("share_%v_%v", userID, shareID)
+		keys[i] = key
+	}
+	return DB.Del(keys...).Err()
+}
+
 type GetShareListResp struct {
-	ShareID   uint      `json:"shareID"`
+	//ShareID   uint      `json:"shareID"`
+	ID        uint      `json:"id"`
 	FileName  string    `json:"fileName"` // 分享描述(文件名)
 	Size      int64     `json:"size"`
 	Type      string    `json:"type"`
@@ -81,11 +96,12 @@ func GetShareList(userID uint) ([]GetShareListResp, error) {
 		//	return nil, err
 		//}
 		// 获取文件列表
-		fileList, err := GetShareByID(share.ID)
+		_, fileList, err := GetShareByID(share.ID)
 		if err != nil {
 			return nil, err
 		}
-		res[i].ShareID = share.ID
+		//res[i].ShareID = share.ID
+		res[i].ID = share.ID
 		res[i].CreatedAt = share.CreatedAt
 		res[i].UpdatedAt = share.UpdatedAt
 		// 判断是否只有一个文件（夹）
@@ -104,23 +120,24 @@ func GetShareList(userID uint) ([]GetShareListResp, error) {
 }
 
 // 通过shareID获得分享的文件
-func GetShareByID(shareID uint) ([]SelectFilesByUserIDAndPathResp, error) {
+func GetShareByID(shareID uint) (Share, []SelectFilesByUserIDAndPathResp, error) {
 	// 先获得分享者ID
-	var userID uint
-	err := db.Model(&Share{}).Where("id = ? and (expiration_time is null or expiration_time > ?)", shareID, time.Now()).Select("user_id").Scan(&userID).Error
+	//var userID uint
+	share := Share{}
+	err := db.Model(&Share{}).Where("id = ? and (expiration_time is null or expiration_time > ?)", shareID, time.Now()).Scan(&share).Error
 	if err != nil {
-		return nil, err
+		return share, nil, err
 	}
 	// 然后再获取userFileIDList
 	shareFileList := ShareFileList{}
-	err = DB.Get("share_" + strconv.Itoa(int(userID)) + "_" + strconv.Itoa(int(shareID))).Scan(&shareFileList)
+	err = DB.Get("share_" + strconv.Itoa(int(share.UserID)) + "_" + strconv.Itoa(int(shareID))).Scan(&shareFileList)
 	if err != nil {
-		return nil, err
+		return share, nil, err
 	}
 	// 最后在获取具体的文件列表
 	fileList := []SelectFilesByUserIDAndPathResp{}
-	err = db.Model(&UserFile{}).Order("is_folder desc").Where("`user_files`.user_id = ? and `user_files`.id in ?", userID, shareFileList.UserFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
-	return fileList, err
+	err = db.Model(&UserFile{}).Order("is_folder desc").Where("`user_files`.user_id = ? and `user_files`.id in ?", share.UserID, shareFileList.UserFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
+	return share, fileList, err
 }
 
 // 通过shareUrl获得分享的文件

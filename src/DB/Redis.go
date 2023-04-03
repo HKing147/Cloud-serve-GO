@@ -34,6 +34,10 @@ func Set(key string, value interface{}, expiration time.Duration) *redis.StatusC
 	return rd.Set(ctx, key, value, expiration)
 }
 
+func Del(keys ...string) *redis.IntCmd {
+	return rd.Del(ctx, keys...)
+}
+
 func SMembers(key string) *redis.StringSliceCmd {
 	return rd.SMembers(ctx, key)
 }

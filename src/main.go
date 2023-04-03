@@ -41,6 +41,7 @@ func main() {
 	r.GET("/api/searchFile", searchFile)
 	r.POST("/api/renameFile", renameFile)
 	r.POST("/api/shareFiles", shareFiles)
+	r.POST("/api/deleteShares", deleteShares)
 	r.GET("/api/getShareByID", getShareByID)
 	r.GET("/api/getShareList", getShareList)
 	r.POST("/api/completelyDeleteFiles", completelyDeleteFiles)
