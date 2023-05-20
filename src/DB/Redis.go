@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
+	"os"
 	"time"
 )
 
@@ -21,6 +22,7 @@ func InitRedis() {
 	result, err := rd.Ping(ctx).Result()
 	if err != nil {
 		fmt.Println("ping err :", err)
+		os.Exit(-1)
 		return
 	}
 	fmt.Println(result)

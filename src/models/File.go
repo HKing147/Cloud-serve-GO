@@ -42,3 +42,7 @@ func GetFileByID(fileID int) (File, error) {
 	err := db.Model(&File{}).Where("id = ?", fileID).Scan(&file).Error
 	return file, err
 }
+
+func AddDownCount(fileID uint) error {
+	return db.Model(&File{}).Where("id = ?", fileID).Update("down_count", gorm.Expr("down_count + 1")).Error
+}

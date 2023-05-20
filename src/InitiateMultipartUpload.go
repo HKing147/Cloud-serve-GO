@@ -55,7 +55,8 @@ func InitiateMultipartUpload(c *gin.Context) {
 		// 指定该Object被下载时的网页缓存行为。
 		// oss.CacheControl("no-cache"),
 		// 指定该Object被下载时的名称。
-		// oss.ContentDisposition("attachment;filename=FileName.txt"),
+		//oss.ContentDisposition("attachment;filename=FileName.txt"),
+		oss.ContentDisposition("attachment"),
 		// 指定该Object的内容编码格式。
 		// oss.ContentEncoding("gzip"),
 		// 指定对返回的Key进行编码，目前支持URL编码。
