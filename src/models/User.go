@@ -171,11 +171,5 @@ func UpdatePassword(userID uint, oldPass string, newPass string) error {
 
 // 修改用户信息
 func UpdateUser(user User) error {
-
-	// 加密密码
-	h := md5.New()
-	h.Write([]byte(user.Password))
-	user.Password = hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("%v\n", user)
-	return db.Model(&User{}).Where("id = ?", user.ID).Updates(&user).Error
+	return db.Model(&user).Updates(user).Error // Updates不会用空值去更新，会跳过。
 }
