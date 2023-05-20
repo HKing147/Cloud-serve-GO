@@ -28,9 +28,24 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		// 获取 authorization header：获取前端传过来的信息的
-		tokenString, err := c.Cookie("token")
-		fmt.Println("请求token:", tokenString)
+		tokenString_, err := c.Cookie("token")
+		if err != nil {
+			tokenString_ = ""
+		}
+		fmt.Println("请求token_:", tokenString_)
 
+		tokenString_admin, err := c.Cookie("admin_token")
+		if err != nil {
+			tokenString_admin = ""
+		}
+		fmt.Println("请求token_admin:", tokenString_admin)
+
+		tokenString := tokenString_admin
+		if tokenString == "" {
+			tokenString = tokenString_
+		}
+		err = nil
+		fmt.Println("请求token:", tokenString)
 		// token为空
 		if err != nil || tokenString == "" {
 			c.JSON(http.StatusOK, gin.H{"meta": models.Meta{1, "请先登录！！！"}})

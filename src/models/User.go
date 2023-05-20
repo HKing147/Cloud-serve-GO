@@ -26,6 +26,7 @@ type User struct {
 	UsedSpace  int64  `json:"usedSpace" gorm:"used_space"`                       // 已用容量
 	UserName   string `json:"userName" gorm:"user_name"`                         // 用户名
 	Wechat     string `json:"Wechat" gorm:"wechat"`                              // 微信号
+	Right      bool   `json:"right" gorm:"right"`                                // 用户权限，false: 普通用户，true: 管理员
 }
 
 type UserRegisterForm struct {
@@ -114,8 +115,13 @@ func Login(c *gin.Context) {
 	DB.Set(user.Email+"_token", token, time.Hour) // 有效期一小时
 	//c.SetSameSite(http.SameSiteNoneMode)
 	//c.SetSameSite(http.SameSiteNoneMode)
-	//c.SetCookie("token", token, 60*60, "/", "http://www.lab-0.com", false, false) // 发布
-	c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", false, false) // 开发
+	if user.Right { // 管理员
+		//c.SetCookie("admin_token", token, 60*60, "/", "http://www.lab-0.com", false, false) // 发布
+		c.SetCookie("admin_token", token, 60*60, "/", "http://localhost:5173", false, false) // 开发
+	} else { // 普通用户
+		//c.SetCookie("token", token, 60*60, "/", "http://www.lab-0.com", false, false) // 发布
+		c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", false, false) // 开发
+	}
 	c.JSON(http.StatusOK, gin.H{"meta": Meta{0, "登录成功！"}, "token": token})
 }
 
@@ -138,6 +144,16 @@ func SelectUserByID(userID uint) (User, error) {
 	user := User{}
 	result := db.Where("id = ?", userID).First(&user)
 	return user, result.Error
+}
+
+func SelectAllUser() ([]User, error) {
+	userList := []User{}
+	err := db.Model(&User{}).Scan(&userList).Error
+	return userList, err
+}
+
+func DeleteUsers(userIDList []uint) error {
+	return db.Model(&User{}).Delete("id in ?", userIDList).Error
 }
 
 // 使用容量更新(+/-)
