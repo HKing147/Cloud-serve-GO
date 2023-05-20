@@ -24,6 +24,8 @@ func main() {
 	r.POST("/api/login", models.Login)
 	r.POST("/api/register", models.Register)
 	r.GET("/api/getUserInfo", getUserInfo)
+	r.POST("/api/updatePassword", updatePassword)
+	r.POST("/api/updateUserInfo", updateUserInfo)
 	r.POST("/api/uploadAvatar", uploadAvatar)
 	r.GET("/api/selectUserByID", selectUserByID) // 不需要登陆
 	r.GET("/api/getCheckCode", getCheckCode)

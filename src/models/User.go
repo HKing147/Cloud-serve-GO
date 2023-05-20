@@ -5,6 +5,7 @@ import (
 	"Cloud-serve/src/JWT"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -147,4 +148,34 @@ func UpdateUsedSpace(userID uint, delta int64) error {
 // 头像更新
 func UpdateAvatar(userID uint, avatar string) error {
 	return db.Model(&User{}).Where("id = ?", userID).Update("avatar", avatar).Error
+}
+
+// 修改密码
+func UpdatePassword(userID uint, oldPass string, newPass string) error {
+	user, err := SelectUserByID(userID)
+	if err != nil {
+		return err
+	}
+	// 加密密码
+	h := md5.New()
+	h.Write([]byte(oldPass))
+	oldPass = hex.EncodeToString(h.Sum(nil))
+	if oldPass != user.Password {
+		return errors.New("旧密码错误！！！")
+	}
+	h = md5.New()
+	h.Write([]byte(newPass))
+	newPass = hex.EncodeToString(h.Sum(nil))
+	return db.Model(&User{}).Where("id = ?", userID).Update("password", newPass).Error
+}
+
+// 修改用户信息
+func UpdateUser(user User) error {
+
+	// 加密密码
+	h := md5.New()
+	h.Write([]byte(user.Password))
+	user.Password = hex.EncodeToString(h.Sum(nil))
+	fmt.Printf("%v\n", user)
+	return db.Model(&User{}).Where("id = ?", user.ID).Updates(&user).Error
 }
