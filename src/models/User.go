@@ -146,10 +146,12 @@ func SelectUserByID(userID uint) (User, error) {
 	return user, result.Error
 }
 
-func SelectAllUser() ([]User, error) {
-	userList := []User{}
-	err := db.Model(&User{}).Scan(&userList).Error
-	return userList, err
+func SelectAllUser(currentPage int, pageSize int) (userList []User, totalPage int64, err error) {
+	db.Model(&User{}).Count(&totalPage)
+	fmt.Println("totalCount:", totalPage)
+	totalPage = (totalPage + int64(pageSize) - 1) / int64(pageSize)
+	err = db.Model(&User{}).Limit(pageSize).Offset((currentPage - 1) * pageSize).Scan(&userList).Error
+	return
 }
 
 func DeleteUsers(userIDList []uint) error {
