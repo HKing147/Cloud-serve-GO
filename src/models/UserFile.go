@@ -23,6 +23,7 @@ type UserFile struct {
 	IsFolder  bool   `json:"isFolder"`  // 是否是非文件夹
 	IsCollect bool   `json:"isCollect"` // 用户是否收藏了该文件
 	IsShare   bool   `json:"isShare"`   // 用户是否分享了该文件
+	DownCount int64  `json:"downCount"` // 下载次数
 }
 
 func GetFileList(c *gin.Context) {
@@ -130,6 +131,7 @@ type SelectFilesByUserIDAndPathResp struct {
 	IsFolder  bool      `json:"isFolder"`
 	IsCollect bool      `json:"isCollect"`
 	IsShare   bool      `json:"isShare"`
+	DownCount int64     `json:"downCount"`
 	CreatedAt time.Time `json:"createdTime"`
 	UpdatedAt time.Time `json:"updatedTime"`
 }
@@ -680,3 +682,7 @@ func SaveFiles(userID uint, userFileIDList []uint, savePath string) error {
 	return nil
 }
 */
+
+func AddDownCount(userFileID uint) error {
+	return db.Model(&UserFile{}).Where("id = ?", userFileID).Update("down_count", gorm.Expr("down_count + 1")).Error
+}

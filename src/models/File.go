@@ -9,7 +9,6 @@ import (
 // File
 type File struct {
 	gorm.Model
-	DownCount int64 `json:"downCount"` // 下载次数
 	//FileName  string `json:"fileName"`  // 文件名
 	//FilePath  string `json:"filePath"`  // 文件路径（相对于当前用户的）
 	FileURL string `json:"fileUrl"` // 文件URL
@@ -45,10 +44,6 @@ func GetFileByID(fileID int) (File, error) {
 	file := File{}
 	err := db.Model(&File{}).Where("id = ?", fileID).Scan(&file).Error
 	return file, err
-}
-
-func AddDownCount(fileID uint) error {
-	return db.Model(&File{}).Where("id = ?", fileID).Update("down_count", gorm.Expr("down_count + 1")).Error
 }
 
 type T struct {
