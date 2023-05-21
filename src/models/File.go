@@ -1,6 +1,9 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"fmt"
+	"gorm.io/gorm"
+)
 
 // File
 type File struct {
@@ -45,4 +48,16 @@ func GetFileByID(fileID int) (File, error) {
 
 func AddDownCount(fileID uint) error {
 	return db.Model(&File{}).Where("id = ?", fileID).Update("down_count", gorm.Expr("down_count + 1")).Error
+}
+
+type T struct {
+	Name  string `gorm:"name" json:"name"`
+	Value uint   `gorm:"value" json:"value"`
+}
+
+func GetFileCategory() ([]T, error) {
+	res := []T{}
+	err := db.Model(&File{}).Group("type").Select("type as name, count(*) as value").Order("value desc").Scan(&res).Error
+	fmt.Println(res)
+	return res, err
 }
