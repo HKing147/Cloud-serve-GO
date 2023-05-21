@@ -65,6 +65,6 @@ func GetFileCategory() ([]T, error) {
 
 // 统计一周内每天的文件上传数
 func GetUploadCntByDay(t time.Time) (uploadCnt int64, err error) {
-	err = db.Model(&File{}).Where("date(created_at) = ?", t).Count(&uploadCnt).Error
+	err = db.Model(&File{}).Where("date(created_at) = ? and type != 'folder'", t).Count(&uploadCnt).Error
 	return
 }

@@ -176,6 +176,11 @@ func GetShareByShareUrl(shareUrl string, sortMethod string) (Share, []SelectFile
 	return shareInfo, fileList, err
 }
 
+func GetShareCnt() (shareCnt int64, err error) {
+	err = db.Model(&Share{}).Count(&shareCnt).Error
+	return
+}
+
 // 统计一周内每天的分享数
 func GetShareCntByDay(t time.Time) (shareCnt int64, err error) {
 	err = db.Model(&Share{}).Where("date(created_at) = ?", t).Count(&shareCnt).Error

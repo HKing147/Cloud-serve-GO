@@ -70,8 +70,8 @@ func InitiateMultipartUpload(c *gin.Context) {
 	imur, err := bucket.InitiateMultipartUpload(objectKey, options...)
 	imur1 := InitiateMultipartUploadResult(imur)
 	//rd := DB.ConnRedis()
-	//rd.Set(imur.UploadID, &imur1, 100*time.Second) // 100s后过期
-	DB.Set(imur.UploadID, &imur1, 100*time.Second) // 100s后过期
+	//rd.Set(imur.UploadID, &imur1, 24*time.Hour) // 1Day后过期
+	DB.Set(imur.UploadID, &imur1, 24*time.Hour) // 1Day后过期
 	if err != nil {
 		fmt.Println("InitiateMultipartUploadResult Error:", err)
 		os.Exit(-1)
