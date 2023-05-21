@@ -175,3 +175,9 @@ func GetShareByShareUrl(shareUrl string, sortMethod string) (Share, []SelectFile
 	err = db.Model(&UserFile{}).Order("is_folder desc").Order(sortMethod).Where("`user_files`.user_id = ? and `user_files`.id in ?", userID, shareFileList.UserFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
 	return shareInfo, fileList, err
 }
+
+// 统计一周内每天的分享数
+func GetShareCntByDay(t time.Time) (shareCnt int64, err error) {
+	err = db.Model(&Share{}).Where("date(created_at) = ?", t).Count(&shareCnt).Error
+	return
+}

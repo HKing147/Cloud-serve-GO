@@ -191,3 +191,9 @@ func UpdatePassword(userID uint, oldPass string, newPass string) error {
 func UpdateUser(user User) error {
 	return db.Model(&user).Updates(user).Error // Updates不会用空值去更新，会跳过。
 }
+
+// 统计一周内每天的用户注册数
+func GetRegisterCntByDay(t time.Time) (registerCnt int64, err error) {
+	err = db.Model(&User{}).Where("date(created_at) = ?", t).Count(&registerCnt).Error
+	return
+}

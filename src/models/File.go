@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"gorm.io/gorm"
+	"time"
 )
 
 // File
@@ -60,4 +61,10 @@ func GetFileCategory() ([]T, error) {
 	err := db.Model(&File{}).Group("type").Select("type as name, count(*) as value").Order("value desc").Scan(&res).Error
 	fmt.Println(res)
 	return res, err
+}
+
+// 统计一周内每天的文件上传数
+func GetUploadCntByDay(t time.Time) (uploadCnt int64, err error) {
+	err = db.Model(&File{}).Where("date(created_at) = ?", t).Count(&uploadCnt).Error
+	return
 }
