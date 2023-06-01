@@ -36,7 +36,11 @@ func UploadPart(c *gin.Context) {
 	//rd := DB.ConnRedis()
 	imur := InitiateMultipartUploadResult{}
 	//rd.Get(para.UploadID).Scan(&imur)
-	DB.Get(para.UploadID).Scan(&imur)
+	err = DB.Get(para.UploadID).Scan(&imur)
+	if err != nil {
+		fmt.Println("UploadPart err:", err)
+		os.Exit(-1)
+	}
 	bucket := OSS.BucketConn()
 	part, err := bucket.UploadPart(oss.InitiateMultipartUploadResult(imur), filePtr, para.File.Size, para.Idx)
 	if err != nil {
@@ -51,7 +55,7 @@ func UploadPart(c *gin.Context) {
 	DB.SAdd(para.UploadID+"_parts", &part1)
 	if exist == 0 { // 第一次加入，设置过期时间
 		//rd.Expire(para.UploadID+"_parts", 100*time.Second) // 保留100s
-		DB.Expire(para.UploadID+"_parts", 100*time.Second) // 保留100s
+		DB.Expire(para.UploadID+"_parts", 24*time.Hour) // 保留1天
 	}
 
 	c.JSON(http.StatusOK, gin.H{

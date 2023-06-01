@@ -34,6 +34,7 @@ func CompleteMultipartUpload(c *gin.Context) {
 		parts1[idx] = oss.UploadPart(part)
 	}
 
+	//cmur, err := bucket.CompleteMultipartUpload(oss.InitiateMultipartUploadResult(imur), parts1, oss.ObjectACL(oss.ACLDefault))
 	cmur, err := bucket.CompleteMultipartUpload(oss.InitiateMultipartUploadResult(imur), parts1, oss.ObjectACL(oss.ACLDefault))
 
 	if err != nil {

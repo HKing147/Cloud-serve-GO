@@ -112,15 +112,22 @@ func Login(c *gin.Context) {
 	// "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjMsImV4cCI6MTY3ODk1NDQ3MywiaXNzIjoiSEtpbmcifQ.2k5H2vvG_QzkN6KFrfja6M32tpLxUKWflauDmmJ1VvY"
 	// "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjMsImV4cCI6MTY3ODk1NDkwMCwiaXNzIjoiSEtpbmcifQ.XKUA1OsR4z_ftSZy1RjlgXpvYb2uSyT8Kzl_z6Mnyj4"
 	// Token写入Redis
-	DB.Set(user.Email+"_token", token, time.Hour) // 有效期一小时
+	duration := 0
+	if userLoginForm.RememberMe {
+		DB.Set(user.Email+"_token", token, 24*time.Hour) // 有效期一天
+		duration = 24 * 60 * 60
+	} else {
+		DB.Set(user.Email+"_token", token, 7*24*time.Hour) // 有效期一周
+		duration = 7 * 24 * 60 * 60
+	}
 	//c.SetSameSite(http.SameSiteNoneMode)
 	//c.SetSameSite(http.SameSiteNoneMode)
 	if user.Right { // 管理员
 		//c.SetCookie("admin_token", token, 60*60, "/", "http://www.lab-0.com", false, false) // 发布
-		c.SetCookie("admin_token", token, 60*60, "/", "http://localhost:5173", false, false) // 开发
+		c.SetCookie("admin_token", token, duration, "/", "http://localhost:5173", false, false) // 开发
 	} else { // 普通用户
 		//c.SetCookie("token", token, 60*60, "/", "http://www.lab-0.com", false, false) // 发布
-		c.SetCookie("token", token, 60*60, "/", "http://localhost:5173", false, false) // 开发
+		c.SetCookie("token", token, duration, "/", "http://localhost:5173", false, false) // 开发
 	}
 	c.JSON(http.StatusOK, gin.H{"meta": Meta{0, "登录成功！"}, "token": token})
 }
@@ -189,7 +196,15 @@ func UpdatePassword(userID uint, oldPass string, newPass string) error {
 
 // 修改用户信息
 func UpdateUser(user User) error {
-	return db.Model(&user).Updates(user).Error // Updates不会用空值去更新，会跳过。
+	fields := []string{"email", "qq", "wechat", "user_name", "total_space", "right"}
+	if user.Password != "" {
+		fields = append(fields, "password")
+		// 加密密码
+		h := md5.New()
+		h.Write([]byte(user.Password))
+		user.Password = hex.EncodeToString(h.Sum(nil))
+	}
+	return db.Model(&user).Select(fields).Updates(user).Error // Updates不会用空值去更新，会跳过。
 }
 
 // 统计一周内每天的用户注册数
