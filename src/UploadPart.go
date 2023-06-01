@@ -33,6 +33,7 @@ func UploadPart(c *gin.Context) {
 		fmt.Println("UploadPart err:", err)
 		os.Exit(-1)
 	}
+	defer filePtr.Close()
 	//rd := DB.ConnRedis()
 	imur := InitiateMultipartUploadResult{}
 	//rd.Get(para.UploadID).Scan(&imur)

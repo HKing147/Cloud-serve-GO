@@ -21,6 +21,7 @@ func main() {
 	r.GET("/api/InitiateMultipartUpload", InitiateMultipartUpload)
 	r.POST("/api/UploadPart", UploadPart)
 	r.POST("/api/CompleteMultipartUpload", CompleteMultipartUpload)
+	r.POST("/api/completeUploadFile", completeUploadFile)
 	r.POST("/api/login", models.Login)
 	r.POST("/api/register", models.Register)
 	r.POST("/api/createUser", createUser)
@@ -58,5 +59,6 @@ func main() {
 	r.GET("/api/getFileCategory", getFileCategory)
 	r.GET("/api/getShareCnt", getShareCnt)
 	r.GET("/api/getDataByDay", getDataByDay)
+	r.GET("/api/getFiles", getFiles)
 	r.Run() // 监听并在 0.0.0.0:8080 上启动服务
 }

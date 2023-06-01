@@ -686,3 +686,8 @@ func SaveFiles(userID uint, userFileIDList []uint, savePath string) error {
 func AddDownCount(userFileID uint) error {
 	return db.Model(&UserFile{}).Where("id = ?", userFileID).Update("down_count", gorm.Expr("down_count + 1")).Error
 }
+
+func GetFilesByUserFileIDList(userFileIDList []string, userID uint) (err error, fileList []SelectFilesByUserIDAndPathResp) {
+	err = db.Model(&UserFile{}).Where("`user_files`.user_id = ? and file_id in ?", userID, userFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
+	return
+}
