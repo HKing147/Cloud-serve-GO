@@ -234,7 +234,8 @@ func DeleteFiles(userID uint, userFileIDList []uint, path string) error {
 			defer waitGroup.Done()
 			// 先看它是否是文件夹
 			file := UserFile{}
-			err := db.Model(&UserFile{}).Where("id = ? and user_id = ? and file_path = ?", userFileID, userID, path).Scan(&file).Error
+			//err := db.Model(&UserFile{}).Where("id = ? and user_id = ? and file_path = ?", userFileID, userID, path).Scan(&file).Error
+			err := db.Model(&UserFile{}).Where("id = ? and user_id = ?", userFileID, userID).Scan(&file).Error
 			if err != nil {
 				errChannel <- err
 				return
@@ -688,6 +689,6 @@ func AddDownCount(userFileID uint) error {
 }
 
 func GetFilesByUserFileIDList(userFileIDList []string, userID uint) (err error, fileList []SelectFilesByUserIDAndPathResp) {
-	err = db.Model(&UserFile{}).Where("`user_files`.user_id = ? and file_id in ?", userID, userFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
+	err = db.Model(&UserFile{}).Where("`user_files`.user_id = ? and `user_files`.id in ?", userID, userFileIDList).Joins("File").Select("`user_files`.*, File.*, `user_files`.id as id").Scan(&fileList).Error
 	return
 }
